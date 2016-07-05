@@ -1,0 +1,14 @@
+[package]
+name = "cargo-ebuild"
+version = "0.1.0"
+authors = ["Doug Goldstein <cardoe@cardoe.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/cardoe/cargo-ebuild"
+homepage = "https://github.com/cardoe/cargo-ebuild"
+description = """
+Generates an ebuild for a package using the in-tree eclasses.
+"""
+
+[dependencies]
+cargo = "0.10"
+rustc-serialize = "0.3"

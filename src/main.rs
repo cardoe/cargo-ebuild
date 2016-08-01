@@ -1,11 +1,17 @@
 extern crate cargo;
+extern crate rustache;
 extern crate rustc_serialize;
 
-use cargo::{Config, CliResult};
+use cargo::{Config, CliError, CliResult};
 use cargo::core::Package;
 use cargo::core::registry::PackageRegistry;
 use cargo::ops;
 use cargo::util::important_paths;
+use rustache::HashBuilder;
+use std::error::Error;
+use std::fs::OpenOptions;
+use std::io;
+use std::path::PathBuf;
 
 #[derive(RustcDecodable)]
 struct Options {
@@ -41,11 +47,65 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     try!(registry.add_sources(&[package.package_id().source_id().clone()]));
     let resolve = try!(ops::resolve_pkg(&mut registry, &package, config));
 
-    println!("CRATES=\"");
-    for x in resolve.iter() {
-        println!("{}-{}", x.name(), x.version());
+    // build the crates the package needs
+    let mut crates = Vec::<String>::new();
+    for pkg in resolve.iter() {
+        crates.push(format!("{}-{}\n", pkg.name(), pkg.version()));
     }
-    println!("\"");
+
+    // root package metadata
+    let metadata = package.manifest().metadata();
+
+    // package description
+    let desc = metadata.description
+        .as_ref()
+        .map(|d| d.clone())
+        .unwrap_or(String::from(package.name()));
+
+    // package homepage
+    let homepage = metadata.homepage
+        .as_ref()
+        .map(|h| h.clone())
+        .unwrap_or(
+            metadata.repository
+            .as_ref()
+            .map(|h| h.clone())
+            .unwrap_or(String::from(""))
+            );
+
+    // build up the ebuild path
+    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
+
+    // build up the varibles for the template
+    let data = HashBuilder::new()
+        .insert_string("description", desc.trim())
+        .insert_string("homepage", homepage.trim())
+        .insert_string("crates", crates.join(""));
+
+    // load the ebuild template
+    let template = include_str!("ebuild.template");
+
+    // generate the ebuild using Rustache to process the template
+    let mut templ = try!(rustache::render_text(template, data).map_err(|_| {
+        CliError::new("unable to generate ebuild: {}", 1)
+    }));
+
+    // Open the file where we'll write the ebuild
+    let mut file = try!(OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .open(&ebuild_path)
+                        .map_err(|err| {
+                            CliError::new(&format!("failed to create ebuild: {}", err.description()), 1)
+                        }));
+
+    // write the contents out
+    try!(io::copy(&mut templ, &mut file).map_err(|err| {
+        CliError::new(&format!("unable to write ebuild to disk: {}", err.description()), 1)
+    }));
+
+    println!("Wrote: {}", ebuild_path.display());
+
 
     Ok(None)
 }

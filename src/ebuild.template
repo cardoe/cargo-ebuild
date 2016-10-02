@@ -3,13 +3,13 @@
 EAPI=6
 
 CRATES="
-{{ crates }}"
+{crates}"
 
 inherit cargo
 
-DESCRIPTION="{{ description }}"
-HOMEPAGE="{{ homepage }}"
-SRC_URI="$(cargo_crate_uris ${CRATES})"
+DESCRIPTION="{description}"
+HOMEPAGE="{homepage}"
+SRC_URI="$(cargo_crate_uris ${{CRATES}})"
 RESTRICT="mirror"
 LICENSE=""
 SLOT="0"

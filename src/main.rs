@@ -66,12 +66,10 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     let homepage = metadata.homepage
         .as_ref()
         .map(|h| h.clone())
-        .unwrap_or(
-            metadata.repository
+        .unwrap_or(metadata.repository
             .as_ref()
             .map(|h| h.clone())
-            .unwrap_or(String::from(""))
-            );
+            .unwrap_or(String::from("")));
 
     // build up the ebuild path
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
@@ -86,22 +84,23 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     let template = include_str!("ebuild.template");
 
     // generate the ebuild using Rustache to process the template
-    let mut templ = try!(rustache::render_text(template, data).map_err(|_| {
-        CliError::new("unable to generate ebuild: {}", 1)
-    }));
+    let mut templ = try!(rustache::render_text(template, data)
+        .map_err(|_| CliError::new("unable to generate ebuild: {}", 1)));
 
     // Open the file where we'll write the ebuild
     let mut file = try!(OpenOptions::new()
-                        .write(true)
-                        .create(true)
-                        .open(&ebuild_path)
-                        .map_err(|err| {
-                            CliError::new(&format!("failed to create ebuild: {}", err.description()), 1)
-                        }));
+        .write(true)
+        .create(true)
+        .open(&ebuild_path)
+        .map_err(|err| {
+            CliError::new(&format!("failed to create ebuild: {}", err.description()),
+                          1)
+        }));
 
     // write the contents out
     try!(io::copy(&mut templ, &mut file).map_err(|err| {
-        CliError::new(&format!("unable to write ebuild to disk: {}", err.description()), 1)
+        CliError::new(&format!("unable to write ebuild to disk: {}", err.description()),
+                      1)
     }));
 
     println!("Wrote: {}", ebuild_path.display());

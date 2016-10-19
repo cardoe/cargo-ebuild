@@ -57,17 +57,17 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     // package description
     let desc = metadata.description
         .as_ref()
-        .map(|d| d.clone())
-        .unwrap_or(String::from(package.name()));
+        .cloned()
+        .unwrap_or_else(|| String::from(package.name()));
 
     // package homepage
     let homepage = metadata.homepage
         .as_ref()
-        .map(|h| h.clone())
+        .cloned()
         .unwrap_or(metadata.repository
             .as_ref()
-            .map(|h| h.clone())
-            .unwrap_or(String::from("")));
+            .cloned()
+            .unwrap_or_else(|| String::from("")));
 
     // build up the ebuild path
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));

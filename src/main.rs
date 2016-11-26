@@ -46,10 +46,9 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     let resolve = try!(ops::resolve_pkg(&mut registry, &package, config));
 
     // build the crates the package needs
-    let mut crates = Vec::<String>::new();
-    for pkg in resolve.iter() {
-        crates.push(format!("{}-{}\n", pkg.name(), pkg.version()));
-    }
+    let crates = resolve.iter()
+        .map(|pkg| format!("{}-{}\n", pkg.name(), pkg.version()))
+        .collect::<Vec<String>>();
 
     // root package metadata
     let metadata = package.manifest().metadata();

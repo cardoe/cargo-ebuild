@@ -68,6 +68,11 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
             .cloned()
             .unwrap_or_else(|| String::from("")));
 
+    let license = metadata.license
+        .as_ref()
+        .cloned()
+        .unwrap_or_else(|| String::from("unknown license"));
+
     // build up the ebuild path
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
 
@@ -86,6 +91,7 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
                 include_str!("ebuild.template"),
                 description = desc.trim(),
                 homepage = homepage.trim(),
+                license = license.trim(),
                 crates = crates.join(""),
                 cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
                 )

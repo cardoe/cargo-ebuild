@@ -87,7 +87,9 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
                 include_str!("ebuild.template"),
                 description = desc.trim(),
                 homepage = homepage.trim(),
-                crates = crates.join(""))
+                crates = crates.join(""),
+                cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
+                )
         .map_err(|err| {
             CliError::new(&format!("unable to write ebuild to disk: {}", err.description()),
                           1)

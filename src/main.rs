@@ -83,6 +83,7 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     let mut file = try!(OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(&ebuild_path)
         .map_err(|err| {
             CliError::new(&format!("failed to create ebuild: {}", err.description()),

@@ -15,3 +15,4 @@ Generates an ebuild for a package using the in-tree eclasses.
 [dependencies]
 cargo = "0.10"
 rustc-serialize = "^0.3"
+time = "^0.1"

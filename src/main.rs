@@ -1,5 +1,6 @@
 extern crate cargo;
 extern crate rustc_serialize;
+extern crate time;
 
 use cargo::{Config, CliError, CliResult};
 use cargo::core::Package;
@@ -98,6 +99,7 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
                 license = license.trim(),
                 crates = crates.join(""),
                 cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
+                this_year = 1900 + time::now().tm_year,
                 )
         .map_err(|err| {
             CliError::new(&format!("unable to write ebuild to disk: {}", err.description()),

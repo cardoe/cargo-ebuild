@@ -3,14 +3,34 @@ extern crate rustc_serialize;
 extern crate time;
 
 use cargo::{Config, CliError, CliResult};
-use cargo::core::Package;
+use cargo::core::{Package, Resolve};
 use cargo::core::registry::PackageRegistry;
 use cargo::ops;
-use cargo::util::important_paths;
+use cargo::util::{important_paths, CargoResult};
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+
+/// Finds the root Cargo.toml of the workspace
+fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Package> {
+    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
+    Package::for_path(&root, config)
+}
+
+/// Generates a package registry by using the Cargo.lock or creating one as necessary
+fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
+    let mut registry = PackageRegistry::new(config);
+    registry.add_sources(&[package.package_id().source_id().clone()])?;
+    Ok(registry)
+}
+
+/// Resolve the packages necessary for the workspace
+fn resolve<'a>(registry: &mut PackageRegistry,
+               package: &'a Package,
+               config: &'a Config) -> CargoResult<Resolve> {
+    ops::resolve_pkg(registry, package, config)
+}
 
 #[derive(RustcDecodable)]
 struct Options {
@@ -37,14 +57,12 @@ Options:
 fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
     try!(config.shell().set_verbosity(options.flag_verbose, options.flag_quiet));
 
-    // Load the root package
-    let root = try!(important_paths::find_root_manifest_for_wd(None, config.cwd()));
-    let package = try!(Package::for_path(&root, config));
+    // Load the workspace and current package
+    let package = workspace(config, None)?;
 
     // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let mut registry = PackageRegistry::new(config);
-    try!(registry.add_sources(&[package.package_id().source_id().clone()]));
-    let resolve = try!(ops::resolve_pkg(&mut registry, &package, config));
+    let mut registry = registry(config, &package)?;
+    let resolve = resolve(&mut registry, &package, config)?;
 
     // build the crates the package needs
     let mut crates = resolve.iter()

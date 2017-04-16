@@ -68,9 +68,9 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
         .as_ref()
         .cloned()
         .unwrap_or(metadata.repository
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| String::from("")));
+                       .as_ref()
+                       .cloned()
+                       .unwrap_or_else(|| String::from("")));
 
     let license = metadata.license
         .as_ref()
@@ -82,14 +82,15 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
 
     // Open the file where we'll write the ebuild
     let mut file = try!(OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(&ebuild_path)
-        .map_err(|err| {
-            CliError::new(&format!("failed to create ebuild: {}", err.description()),
-                          1)
-        }));
+                            .write(true)
+                            .create(true)
+                            .truncate(true)
+                            .open(&ebuild_path)
+                            .map_err(|err| {
+                                         CliError::new(&format!("failed to create ebuild: {}",
+                                                                err.description()),
+                                                       1)
+                                     }));
 
     // write the contents out
     try!(write!(file,
@@ -101,10 +102,11 @@ fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {
                 cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
                 this_year = 1900 + time::now().tm_year,
                 )
-        .map_err(|err| {
-            CliError::new(&format!("unable to write ebuild to disk: {}", err.description()),
-                          1)
-        }));
+                 .map_err(|err| {
+                              CliError::new(&format!("unable to write ebuild to disk: {}",
+                                                     err.description()),
+                                            1)
+                          }));
 
     println!("Wrote: {}", ebuild_path.display());
 

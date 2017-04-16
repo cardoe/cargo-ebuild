@@ -54,10 +54,7 @@ struct Options {
     flag_quiet: Option<bool>,
 }
 
-fn main() {
-    cargo::execute_main_without_stdin(real_main,
-                                      false,
-                                      r#"
+const USAGE: &'static str = r#"
 Create an ebuild for a project
 
 Usage:
@@ -67,7 +64,10 @@ Options:
     -h, --help          Print this message
     -v, --verbose       Use verbose output
     -q, --quiet         No output printed to stdout
-"#)
+"#;
+
+fn main() {
+    cargo::execute_main_without_stdin(real_main, false, USAGE)
 }
 
 fn real_main(options: Options, config: &Config) -> CliResult<Option<()>> {

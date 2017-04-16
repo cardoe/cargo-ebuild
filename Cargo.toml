@@ -17,6 +17,6 @@ Generates an ebuild for a package using the in-tree eclasses.
 travis-ci = { repository = "cardoe/cargo-ebuild" }
 
 [dependencies]
-cargo = "0.16"
+cargo = "0.17"
 rustc-serialize = "^0.3"
 time = "^0.1"

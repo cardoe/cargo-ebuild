@@ -98,3 +98,7 @@ IUSE=""
 DEPEND=""
 RDEPEND=""
 ```
+
+## API
+
+API documentation is available at [docs.rs](https://docs.rs/cargo-ebuild/).

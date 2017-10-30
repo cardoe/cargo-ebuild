@@ -33,7 +33,8 @@ fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Work
 /// Generates a package registry by using the Cargo.lock or creating one as necessary
 fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
     let mut registry = PackageRegistry::new(config)?;
-    registry.add_sources(&[package.package_id().source_id().clone()])?;
+    registry
+        .add_sources(&[package.package_id().source_id().clone()])?;
     Ok(registry)
 }
 
@@ -87,14 +88,15 @@ fn main() {
 }
 
 fn real_main(options: Options, config: &Config) -> CliResult {
-    config.configure(options.flag_verbose,
-                     options.flag_quiet,
-                     /* color */
-                     &None,
-                     /* frozen */
-                     false,
-                     /* locked */
-                     false)?;
+    config
+        .configure(options.flag_verbose,
+                   options.flag_quiet,
+                   /* color */
+                   &None,
+                   /* frozen */
+                   false,
+                   /* locked */
+                   false)?;
 
     // Load the workspace and current package
     let workspace = workspace(config, None)?;
@@ -105,7 +107,8 @@ fn real_main(options: Options, config: &Config) -> CliResult {
     let resolve = resolve(&mut registry, &workspace)?;
 
     // build the crates the package needs
-    let mut crates = resolve.1
+    let mut crates = resolve
+        .1
         .iter()
         .map(|pkg| format!("{}-{}\n", pkg.name(), pkg.version()))
         .collect::<Vec<String>>();
@@ -117,21 +120,22 @@ fn real_main(options: Options, config: &Config) -> CliResult {
     let metadata = package.manifest().metadata();
 
     // package description
-    let desc = metadata.description
+    let desc = metadata
+        .description
         .as_ref()
         .cloned()
         .unwrap_or_else(|| String::from(package.name()));
 
     // package homepage
-    let homepage = metadata.homepage
-        .as_ref()
-        .cloned()
-        .unwrap_or(metadata.repository
-                       .as_ref()
-                       .cloned()
-                       .unwrap_or_else(|| String::from("")));
+    let homepage =
+        metadata.homepage.as_ref().cloned().unwrap_or(metadata
+                                                          .repository
+                                                          .as_ref()
+                                                          .cloned()
+                                                          .unwrap_or_else(|| String::from("")));
 
-    let license = metadata.license
+    let license = metadata
+        .license
         .as_ref()
         .cloned()
         .unwrap_or_else(|| String::from("unknown license"));
@@ -140,15 +144,13 @@ fn real_main(options: Options, config: &Config) -> CliResult {
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
 
     // Open the file where we'll write the ebuild
-    let mut file = try!(OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(&ebuild_path)
-                            .map_err(|err| {
-                                         human(format!("failed to create ebuild: {}",
-                                                       err.description()))
-                                     }));
+    let mut file =
+        try!(OpenOptions::new()
+                 .write(true)
+                 .create(true)
+                 .truncate(true)
+                 .open(&ebuild_path)
+                 .map_err(|err| human(format!("failed to create ebuild: {}", err.description()))));
 
     // write the contents out
     try!(write!(file,

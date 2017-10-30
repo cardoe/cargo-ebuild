@@ -9,7 +9,8 @@
  */
 
 extern crate cargo;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
 extern crate time;
 
 use cargo::{Config, CliResult};
@@ -17,9 +18,8 @@ use cargo::core::{Package, PackageSet, Resolve, Workspace};
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::ops;
-use cargo::util::{human, important_paths, CargoResult};
+use cargo::util::{important_paths, CargoResult, CargoResultExt};
 use std::env;
-use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
@@ -60,7 +60,7 @@ fn resolve<'a>(registry: &mut PackageRegistry,
     Ok((packages, resolve))
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 struct Options {
     flag_verbose: u32,
     flag_quiet: Option<bool>,
@@ -144,13 +144,12 @@ fn real_main(options: Options, config: &Config) -> CliResult {
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
 
     // Open the file where we'll write the ebuild
-    let mut file =
-        try!(OpenOptions::new()
-                 .write(true)
-                 .create(true)
-                 .truncate(true)
-                 .open(&ebuild_path)
-                 .map_err(|err| human(format!("failed to create ebuild: {}", err.description()))));
+    let mut file = try!(OpenOptions::new()
+                            .write(true)
+                            .create(true)
+                            .truncate(true)
+                            .open(&ebuild_path)
+                            .chain_err(|| "failed to create ebuild"));
 
     // write the contents out
     try!(write!(file,
@@ -161,11 +160,7 @@ fn real_main(options: Options, config: &Config) -> CliResult {
                 crates = crates.join(""),
                 cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
                 this_year = 1900 + time::now().tm_year,
-                )
-                 .map_err(|err| {
-                              human(format!("unable to write ebuild to disk: {}",
-                                            err.description()))
-                          }));
+                ).chain_err(|| "unable to write ebuild to disk"));
 
     println!("Wrote: {}", ebuild_path.display());
 

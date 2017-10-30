@@ -1,6 +1,6 @@
 [root]
 name = "cargo-ebuild"
-version = "0.1.5-pre"
+version = "0.1.5"
 dependencies = [
  "cargo 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.16 (registry+https://github.com/rust-lang/crates.io-index)",

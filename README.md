@@ -1,6 +1,10 @@
 # cargo-ebuild
 
-[![Build Status](https://travis-ci.org/cardoe/cargo-ebuild.svg?branch=master)](https://travis-ci.org/cardoe/cargo-ebuild) [![Latest Version](https://img.shields.io/crates/v/cargo-ebuild.svg)](https://crates.io/crates/cargo-ebuild)
+[![Build Status](https://travis-ci.org/cardoe/cargo-ebuild.svg?branch=master)](https://travis-ci.org/cardoe/cargo-ebuild)
+[![Rust version]( https://img.shields.io/badge/rust-1.17+-blue.svg)]()
+[![Latest Version](https://img.shields.io/crates/v/cargo-ebuild.svg)](https://crates.io/crates/cargo-ebuild)
+[![All downloads](https://img.shields.io/crates/d/cargo-ebuild.svg)](https://crates.io/crates/cargo-ebuild)
+[![Downloads of latest version](https://img.shields.io/crates/dv/cargo-ebuild.svg)](https://crates.io/crates/cargo-ebuild)
 
 `cargo ebuild` is a Cargo subcommand that generates an
 [ebuild](https://wiki.gentoo.org/wiki/Ebuild) recipe that uses

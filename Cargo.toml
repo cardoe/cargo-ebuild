@@ -21,3 +21,6 @@ cargo = "^0.27"
 time = "^0.1"
 structopt = "^0.2"
 quicli = "^0.2"
+
+[dev-dependencies]
+assert_cli = "^0.6"

@@ -14,58 +14,17 @@ extern crate time;
 extern crate structopt;
 #[macro_use]
 extern crate quicli;
+#[macro_use]
+extern crate log;
 
-use cargo::{Config, CliResult};
-use cargo::core::{Package, PackageSet, Resolve, Workspace};
-use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Method;
-use cargo::ops;
-use cargo::util::{important_paths, CargoResult};
+pub mod cargo_utils;
+
+use cargo::{CliResult, Config};
+use cargo_utils::*;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-/// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(&config.cwd())?;
-    Workspace::new(&root, config)
-}
-
-/// Generates a package registry by using the Cargo.lock or creating one as necessary
-fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = PackageRegistry::new(config)?;
-    registry
-        .add_sources(&[package.package_id().source_id().clone()])?;
-    Ok(registry)
-}
-
-/// Resolve the packages necessary for the workspace
-fn resolve<'a>(registry: &mut PackageRegistry<'a>,
-               workspace: &Workspace<'a>)
-               -> CargoResult<(PackageSet<'a>, Resolve)> {
-    // resolve our dependencies
-    let (packages, resolve) = ops::resolve_ws(workspace)?;
-
-    // resolve with all features set so we ensure we get all of the depends downloaded
-    let resolve = ops::resolve_with_previous(registry,
-                                             workspace,
-                                             /* resolve it all */
-                                             Method::Everything,
-                                             /* previous */
-                                             Some(&resolve),
-                                             /* don't avoid any */
-                                             None,
-                                             /* specs */
-                                             &[],
-                                             // register patches
-                                             true,
-                                             // warn
-                                             false
-                                             )?;
-
-    Ok((packages, resolve))
-}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "cargo ebuild")]
@@ -80,27 +39,30 @@ struct Opt {
 
     /// Arguments passed to cargo
     #[structopt(short = "f", long = "unstable-flags", parse(from_str))]
-    unstable_flags: Vec<String>
+    unstable_flags: Vec<String>,
 }
 
 main!(|opt: Opt, log_level: verbose| {
     let mut config = Config::default().unwrap();
-    let _ = real_main(opt, &mut config);
+
+    if let Err(e) = real_main(opt, &mut config) {
+        error!("{:?}", e);
+    };
 });
 
 fn real_main(options: Opt, config: &mut Config) -> CliResult {
-    config
-        .configure(options.verbose,
-                   Some(options.quiet),
-                   /* color */
-                   &None,
-                   /* frozen */
-                   false,
-                   /* locked */
-                   false,
-                   // unstable flag
-                   &options.unstable_flags
-                   )?;
+    config.configure(
+        options.verbose,
+        Some(options.quiet),
+        // color
+        &None,
+        // frozen
+        false,
+        // locked
+        false,
+        // unstable flag
+        &options.unstable_flags,
+    )?;
 
     // Load the workspace and current package
     let workspace = workspace(config)?;
@@ -124,21 +86,18 @@ fn real_main(options: Opt, config: &mut Config) -> CliResult {
     let metadata = package.manifest().metadata();
 
     // package description
-    let desc = metadata
-        .description
-        .as_ref()
-        .cloned()
-        .unwrap();
-        // TODO: now package.name is InternedString
-        // .unwrap_or_else(|| String::from(package.name()));
+    let desc = metadata.description.as_ref().cloned().unwrap();
+    // TODO: now package.name is InternedString
+    // .unwrap_or_else(|| String::from(package.name()));
 
     // package homepage
-    let homepage =
-        metadata.homepage.as_ref().cloned().unwrap_or(metadata
-                                                          .repository
-                                                          .as_ref()
-                                                          .cloned()
-                                                          .unwrap_or_else(|| String::from("")));
+    let homepage = metadata.homepage.as_ref().cloned().unwrap_or(
+        metadata
+            .repository
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| String::from("")),
+    );
 
     let license = metadata
         .license
@@ -151,25 +110,25 @@ fn real_main(options: Opt, config: &mut Config) -> CliResult {
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(&ebuild_path)
-                            .expect("porcodio");
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&ebuild_path)
+        .unwrap();
 
     // write the contents out
-    write!(file,
-            include_str!("ebuild.template"),
-            description = desc.trim(),
-            homepage = homepage.trim(),
-            license = license.trim(),
-            crates = crates.join(""),
-            cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-            this_year = 1900 + time::now().tm_year,
-            ).expect("Error during ebuild file writing");
+    write!(
+        file,
+        include_str!("ebuild.template"),
+        description = desc.trim(),
+        homepage = homepage.trim(),
+        license = license.trim(),
+        crates = crates.join(""),
+        cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
+        this_year = 1900 + time::now().tm_year,
+    ).expect("Error during ebuild file writing");
 
     println!("Wrote: {}", ebuild_path.display());
-
 
     Ok(())
 }

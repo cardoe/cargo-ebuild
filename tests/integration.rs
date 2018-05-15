@@ -7,9 +7,9 @@ use std::io::prelude::*;
 //
 #[test]
 fn ebuild() {
-
     assert_cli::Assert::main_binary()
-        .stdout().is("Wrote: cargo-ebuild-0.1.7.ebuild")
+        .stdout()
+        .is("Wrote: cargo-ebuild-0.1.7.ebuild")
         .unwrap();
 
     let mut new_file = match File::open("cargo-ebuild-0.1.7.ebuild") {
@@ -28,7 +28,5 @@ fn ebuild() {
     let mut test_ebuild = String::new();
     test_file.read_to_string(&mut test_ebuild).unwrap();
 
-
     assert_eq!(new_ebuild, test_ebuild);
-
 }

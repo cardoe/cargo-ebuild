@@ -1,6 +1,6 @@
 [package]
 name = "cargo-ebuild"
-version = "0.1.6-pre"
+version = "0.1.7"
 authors = ["Doug Goldstein <cardoe@cardoe.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/cardoe/cargo-ebuild"
@@ -13,11 +13,11 @@ description = """
 Generates an ebuild for a package using the in-tree eclasses.
 """
 
-[badges]
-travis-ci = { repository = "cardoe/cargo-ebuild" }
+[badges.travis-ci]
+repository = "cardoe/cargo-bitbake"
 
 [dependencies]
-cargo = "^0.21"
-serde = "1"
-serde_derive = "1"
+cargo = "^0.27"
 time = "^0.1"
+structopt = "^0.2"
+quicli = "^0.2"

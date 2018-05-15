@@ -9,24 +9,26 @@
  */
 
 extern crate cargo;
-#[macro_use]
-extern crate serde_derive;
 extern crate time;
+#[macro_use]
+extern crate structopt;
+#[macro_use]
+extern crate quicli;
 
 use cargo::{Config, CliResult};
 use cargo::core::{Package, PackageSet, Resolve, Workspace};
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::ops;
-use cargo::util::{important_paths, CargoResult, CargoResultExt};
-use std::env;
+use cargo::util::{important_paths, CargoResult};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 /// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
+fn workspace(config: &Config) -> CargoResult<Workspace> {
+    let root = important_paths::find_root_manifest_for_wd(&config.cwd())?;
     Workspace::new(&root, config)
 }
 
@@ -39,8 +41,8 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 }
 
 /// Resolve the packages necessary for the workspace
-fn resolve<'a>(registry: &mut PackageRegistry,
-               workspace: &'a Workspace)
+fn resolve<'a>(registry: &mut PackageRegistry<'a>,
+               workspace: &Workspace<'a>)
                -> CargoResult<(PackageSet<'a>, Resolve)> {
     // resolve our dependencies
     let (packages, resolve) = ops::resolve_ws(workspace)?;
@@ -55,51 +57,53 @@ fn resolve<'a>(registry: &mut PackageRegistry,
                                              /* don't avoid any */
                                              None,
                                              /* specs */
-                                             &[])?;
+                                             &[],
+                                             // register patches
+                                             true,
+                                             // warn
+                                             false
+                                             )?;
 
     Ok((packages, resolve))
 }
 
-#[derive(Deserialize)]
-struct Options {
-    flag_verbose: u32,
-    flag_quiet: Option<bool>,
+#[derive(StructOpt, Debug)]
+#[structopt(name = "cargo ebuild")]
+struct Opt {
+    /// Verbose mode (-v, -vv, -vvv, etc.)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: u32,
+
+    /// No output printed to stdout
+    #[structopt(short = "q", long = "quiet")]
+    quiet: bool,
+
+    /// Arguments passed to cargo
+    #[structopt(short = "f", long = "unstable-flags", parse(from_str))]
+    unstable_flags: Vec<String>
 }
 
-const USAGE: &'static str = r#"
-Create an ebuild for a project
+main!(|opt: Opt, log_level: verbose| {
+    let mut config = Config::default().unwrap();
+    let _ = real_main(opt, &mut config);
+});
 
-Usage:
-    cargo ebuild [options]
-
-Options:
-    -h, --help          Print this message
-    -v, --verbose       Use verbose output
-    -q, --quiet         No output printed to stdout
-"#;
-
-fn main() {
-    let config = Config::default().unwrap();
-    let args = env::args().collect::<Vec<_>>();
-    let result = cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false);
-    if let Err(e) = result {
-        cargo::exit_with_error(e, &mut *config.shell());
-    }
-}
-
-fn real_main(options: Options, config: &Config) -> CliResult {
+fn real_main(options: Opt, config: &mut Config) -> CliResult {
     config
-        .configure(options.flag_verbose,
-                   options.flag_quiet,
+        .configure(options.verbose,
+                   Some(options.quiet),
                    /* color */
                    &None,
                    /* frozen */
                    false,
                    /* locked */
-                   false)?;
+                   false,
+                   // unstable flag
+                   &options.unstable_flags
+                   )?;
 
     // Load the workspace and current package
-    let workspace = workspace(config, None)?;
+    let workspace = workspace(config)?;
     let package = workspace.current()?;
 
     // Resolve all dependencies (generate or use Cargo.lock as necessary)
@@ -124,7 +128,9 @@ fn real_main(options: Options, config: &Config) -> CliResult {
         .description
         .as_ref()
         .cloned()
-        .unwrap_or_else(|| String::from(package.name()));
+        .unwrap();
+        // TODO: now package.name is InternedString
+        // .unwrap_or_else(|| String::from(package.name()));
 
     // package homepage
     let homepage =
@@ -144,23 +150,23 @@ fn real_main(options: Options, config: &Config) -> CliResult {
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
 
     // Open the file where we'll write the ebuild
-    let mut file = try!(OpenOptions::new()
+    let mut file = OpenOptions::new()
                             .write(true)
                             .create(true)
                             .truncate(true)
                             .open(&ebuild_path)
-                            .chain_err(|| "failed to create ebuild"));
+                            .expect("porcodio");
 
     // write the contents out
-    try!(write!(file,
-                include_str!("ebuild.template"),
-                description = desc.trim(),
-                homepage = homepage.trim(),
-                license = license.trim(),
-                crates = crates.join(""),
-                cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-                this_year = 1900 + time::now().tm_year,
-                ).chain_err(|| "unable to write ebuild to disk"));
+    write!(file,
+            include_str!("ebuild.template"),
+            description = desc.trim(),
+            homepage = homepage.trim(),
+            license = license.trim(),
+            crates = crates.join(""),
+            cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
+            this_year = 1900 + time::now().tm_year,
+            ).expect("Error during ebuild file writing");
 
     println!("Wrote: {}", ebuild_path.display());
 

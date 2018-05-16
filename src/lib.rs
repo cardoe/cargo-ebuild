@@ -34,26 +34,24 @@ pub struct Opt {
 /// cli configuration
 pub fn ebuild_from_cargo(options: Opt) -> Result<Ebuild, String> {
     // build the crate URIs
-    let mut config = Config::default()
+    let mut config = Config::default().map_err(|e| e.to_string())?;
+
+    config
+        .configure(
+            options.verbose,
+            Some(options.quiet),
+            &None, // color
+            false, // frozen
+            false, // locked
+            &options.unstable_flags,
+        )
         .map_err(|e| e.to_string())?;
-
-    config.configure(
-        options.verbose,
-        Some(options.quiet),
-        &None, // color
-        false, // frozen
-        false, // locked
-        &options.unstable_flags,
-    ).map_err(|e| e.to_string())?;
-
 
     // Build up data about the package we are attempting to generate a recipe for
-    let md = PackageInfo::new(&config)
-        .map_err(|e| e.to_string())?;
+    let md = PackageInfo::new(&config).map_err(|e| e.to_string())?;
 
     // Our current package
-    let package = md.package()
-        .map_err(|e| e.to_string())?;
+    let package = md.package().map_err(|e| e.to_string())?;
 
     let _crate_root = package
         .manifest_path()
@@ -61,8 +59,7 @@ pub fn ebuild_from_cargo(options: Opt) -> Result<Ebuild, String> {
         .expect("Cargo.toml must have a parent");
 
     // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let resolve = md.resolve()
-        .map_err(|e| e.to_string())?;
+    let resolve = md.resolve().map_err(|e| e.to_string())?;
 
     // build the crates the package needs
     let mut crates = resolve
@@ -122,9 +119,7 @@ pub fn ebuild_from_cargo(options: Opt) -> Result<Ebuild, String> {
         .trim();
 
     // compute the relative directory into the repo our Cargo.toml is at
-    let _rel_dir = md.rel_dir()
-        .map_err(|e| e.to_string())?;
-
+    let _rel_dir = md.rel_dir().map_err(|e| e.to_string())?;
 
     // package version
     let version = package.manifest().version().to_string();

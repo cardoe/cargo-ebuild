@@ -16,21 +16,27 @@ extern crate log;
 extern crate human_panic;
 extern crate cargo_ebuild;
 
+use cargo_ebuild::*;
+use quicli::prelude::StructOpt;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use quicli::prelude::StructOpt;
-use cargo_ebuild::*;
 
 main!(|opt: Opt, log_level: verbose| {
     setup_panic!();
 
-    let ebuild = ebuild_from_cargo(opt)
-        .expect("Failed to generate ebuild from the cargo project");
+    let ebuild = match ebuild_from_cargo(opt) {
+        Ok(ebuild) => ebuild,
+        Err(err) => {
+            error!("{}", err);
+            panic!("{}", err);
+        }
+    };
 
     debug!("Generated {:#?}", ebuild);
 
     // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", ebuild.name(), ebuild.version()));
+    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild",
+                                            ebuild.name(), ebuild.version()));
 
     debug!("Ebuild path: {:?}", ebuild_path);
 
@@ -48,4 +54,3 @@ main!(|opt: Opt, log_level: verbose| {
         Err(err) => error!("{:?}", err),
     };
 });
-

@@ -124,6 +124,7 @@ version = "0.1.7"
 dependencies = [
  "assert_cli 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo 0.27.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "human-panic 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "quicli 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",

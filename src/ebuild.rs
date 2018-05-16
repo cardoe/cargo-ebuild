@@ -1,4 +1,3 @@
-
 //!
 //! Ebuild management
 //!
@@ -20,32 +19,34 @@ pub struct Ebuild {
     version: String,
     provider: String,
     provider_version: String,
-    this_year: i32
+    this_year: i32,
 }
 
 impl Ebuild {
     /// Ebuild information
-    pub fn new(name: &str,
-               description: &str,
-               homepage: &str,
-               license: &str,
-               crates: &str,
-               version: &str,
-               provider: &str,
-               provider_version: &str,
-               year: i32) -> Ebuild {
-            Ebuild {
-                name: name.to_string(),
-                description: description.to_string(),
-                homepage: homepage.to_string(),
-                license: license.to_string(),
-                crates: crates.to_string(),
-                version: version.to_string(),
-                provider: provider.to_string(),
-                provider_version: provider_version.to_string(),
-                this_year: year,
-            }
+    pub fn new(
+        name: &str,
+        description: &str,
+        homepage: &str,
+        license: &str,
+        crates: &str,
+        version: &str,
+        provider: &str,
+        provider_version: &str,
+        year: i32,
+    ) -> Ebuild {
+        Ebuild {
+            name: name.to_string(),
+            description: description.to_string(),
+            homepage: homepage.to_string(),
+            license: license.to_string(),
+            crates: crates.to_string(),
+            version: version.to_string(),
+            provider: provider.to_string(),
+            provider_version: provider_version.to_string(),
+            this_year: year,
         }
+    }
 
     /// Get ebuild's name
     pub fn name(&self) -> String {
@@ -59,7 +60,8 @@ impl Ebuild {
 
     /// Write the ebuild from the template to a buffer
     pub fn write(&self, file: &mut io::Write) -> io::Result<()> {
-        write!(file,
+        write!(
+            file,
             include_str!("ebuild.template"),
             description = self.description,
             homepage = self.homepage,
@@ -68,6 +70,6 @@ impl Ebuild {
             provider = self.provider,
             provider_version = self.provider_version,
             this_year = self.this_year
-            )
+        )
     }
 }

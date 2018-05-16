@@ -14,7 +14,7 @@ Generates an ebuild for a package using the in-tree eclasses.
 """
 
 [badges.travis-ci]
-repository = "cardoe/cargo-bitbake"
+repository = "cardoe/cargo-ebuild"
 
 [dependencies]
 cargo = "^0.27"

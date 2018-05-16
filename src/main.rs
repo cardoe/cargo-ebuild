@@ -20,17 +20,20 @@ extern crate log;
 extern crate human_panic;
 
 pub mod cargo_utils;
+pub mod core;
 
-use cargo::{CliResult, Config};
-use cargo_utils::*;
+use cargo::Config;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use core::*;
+
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "cargo ebuild")]
-struct Opt {
+// tmp public
+pub struct Opt {
     /// Verbose mode (-v, -vv, -vvv, etc.)
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     verbose: u32,
@@ -49,68 +52,12 @@ main!(|opt: Opt, log_level: verbose| {
 
     let mut config = Config::default().unwrap();
 
-    if let Err(e) = real_main(opt, &mut config) {
-        error!("{:?}", e);
-    };
-});
+    let ebuild = ebuild_from_cargo(opt, &mut config).unwrap();
 
-fn real_main(options: Opt, config: &mut Config) -> CliResult {
-    config.configure(
-        options.verbose,
-        Some(options.quiet),
-        // color
-        &None,
-        // frozen
-        false,
-        // locked
-        false,
-        // unstable flag
-        &options.unstable_flags,
-    )?;
-
-    // Load the workspace and current package
-    let workspace = workspace(config)?;
-    let package = workspace.current()?;
-
-    // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let mut registry = registry(config, &package)?;
-    let resolve = resolve(&mut registry, &workspace)?;
-
-    // build the crates the package needs
-    let mut crates = resolve
-        .1
-        .iter()
-        .map(|pkg| format!("{}-{}\n", pkg.name(), pkg.version()))
-        .collect::<Vec<String>>();
-
-    // sort the crates
-    crates.sort();
-
-    // root package metadata
-    let metadata = package.manifest().metadata();
-
-    // package description
-    let desc = metadata.description.as_ref().cloned().unwrap();
-    // TODO: now package.name is InternedString
-    // .unwrap_or_else(|| String::from(package.name()));
-
-    // package homepage
-    let homepage = metadata.homepage.as_ref().cloned().unwrap_or(
-        metadata
-            .repository
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| String::from("")),
-    );
-
-    let license = metadata
-        .license
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from("unknown license"));
+    info!("{:?}", ebuild);
 
     // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
+    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", ebuild.name, ebuild.version));
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()
@@ -120,19 +67,16 @@ fn real_main(options: Opt, config: &mut Config) -> CliResult {
         .open(&ebuild_path)
         .unwrap();
 
-    // write the contents out
-    write!(
-        file,
+    write!(file,
         include_str!("ebuild.template"),
-        description = desc.trim(),
-        homepage = homepage.trim(),
-        license = license.trim(),
-        crates = crates.join(""),
-        cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-        this_year = 1900 + time::now().tm_year,
-    ).expect("Error during ebuild file writing");
+        description = ebuild.description,
+        homepage = ebuild.homepage,
+        license = ebuild.license,
+        crates = ebuild.crates,
+        cargo_ebuild_ver = ebuild.version,
+        this_year = ebuild.year
+        ).expect("Error during ebuild file writing");
 
     println!("Wrote: {}", ebuild_path.display());
+});
 
-    Ok(())
-}

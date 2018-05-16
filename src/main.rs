@@ -32,7 +32,7 @@ main!(|opt: Opt, log_level: verbose| {
     // build up the ebuild path
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", ebuild.name(), ebuild.version()));
 
-    debug!("Ebuild path: {}", ebuild_path);
+    debug!("Ebuild path: {:?}", ebuild_path);
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()

@@ -55,6 +55,7 @@ glob-0.2.11
 globset-0.4.0
 hex-0.3.2
 home-0.3.3
+human-panic-0.4.0
 humantime-1.1.1
 idna-0.1.4
 ignore-0.4.2
@@ -80,6 +81,7 @@ num_cpus-1.8.0
 openssl-0.10.7
 openssl-probe-0.1.2
 openssl-sys-0.9.30
+os_type-2.0.0
 percent-encoding-1.0.1
 pkg-config-0.3.11
 proc-macro2-0.3.8
@@ -117,6 +119,7 @@ syn-0.13.10
 synom-0.11.3
 synstructure-0.6.1
 tar-0.4.15
+tempdir-0.3.7
 tempfile-3.0.2
 termcolor-0.3.6
 termion-1.5.1
@@ -133,6 +136,7 @@ unicode-xid-0.1.0
 unreachable-1.0.0
 url-1.7.0
 utf8-ranges-1.0.0
+uuid-0.6.3
 vcpkg-0.2.3
 vec_map-0.8.1
 void-1.0.2

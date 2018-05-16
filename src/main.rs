@@ -16,6 +16,8 @@ extern crate structopt;
 extern crate quicli;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate human_panic;
 
 pub mod cargo_utils;
 
@@ -43,6 +45,8 @@ struct Opt {
 }
 
 main!(|opt: Opt, log_level: verbose| {
+    setup_panic!();
+
     let mut config = Config::default().unwrap();
 
     if let Err(e) = real_main(opt, &mut config) {

@@ -7,12 +7,15 @@ use std::io::prelude::*;
 //
 #[test]
 fn ebuild() {
+    let ebuild_name = format!("cargo-ebuild-{}.ebuild", env!("CARGO_PKG_VERSION"));
+
     assert_cli::Assert::main_binary()
+        .with_args(&["build"])
         .stdout()
-        .is("Wrote: cargo-ebuild-0.1.7.ebuild")
+        .is((format!("Wrote: {}", ebuild_name)).as_str())
         .unwrap();
 
-    let mut new_file = match File::open("cargo-ebuild-0.1.7.ebuild") {
+    let mut new_file = match File::open(format!("{}", ebuild_name)) {
         Err(why) => panic!("couldn't open generated ebuild: {}", why),
         Ok(f) => f,
     };
@@ -20,8 +23,8 @@ fn ebuild() {
     let mut new_ebuild = String::new();
     new_file.read_to_string(&mut new_ebuild).unwrap();
 
-    let mut test_file = match File::open("tests/cargo-ebuild-0.1.7.ebuild") {
-        Err(why) => panic!("couldn't open generated ebuild: {}", why),
+    let mut test_file = match File::open(format!("tests/{}", ebuild_name)) {
+        Err(why) => panic!("couldn't open test ebuild: {}", why),
         Ok(f) => f,
     };
 

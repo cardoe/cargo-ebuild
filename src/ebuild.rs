@@ -60,7 +60,7 @@ impl Ebuild {
 
     /// Write the ebuild from the template to a buffer
     pub fn write(&self, file: &mut io::Write) -> io::Result<()> {
-        write!(
+        writeln!(
             file,
             include_str!("ebuild.template"),
             description = self.description,

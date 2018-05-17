@@ -22,7 +22,7 @@ impl<'cfg> PackageInfo<'cfg> {
         Ok(PackageInfo {
             cfg: config,
             current_manifest: root,
-            ws: ws,
+            ws,
         })
     }
 

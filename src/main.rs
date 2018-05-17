@@ -8,31 +8,45 @@
  * except according to those terms.
  */
 
-#[macro_use]
+extern crate cargo_ebuild;
 extern crate quicli;
-#[macro_use]
-extern crate log;
+extern crate failure;
 #[macro_use]
 extern crate human_panic;
-extern crate cargo_ebuild;
 
-use cargo_ebuild::*;
-use quicli::prelude::StructOpt;
+use cargo_ebuild::Cli;
+use cargo_ebuild::run_cargo_ebuild;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
+use quicli::prelude::*;
+use failure::Error;
 
-main!(|cli: Cli, log_level: verbose| {
+fn main() -> std::result::Result<(), Error> {
+    let args = Cli::from_args();
+    let is_quiet = args.quiet;
+
     setup_panic!();
 
-    let ebuild = run_cargo_ebuild(cli)?;
+    LoggerBuiler::new()
+        .filter(
+            None,
+            match args.verbosity {
+                0 => LogLevel::Error,
+                1 => LogLevel::Warn,
+                2 => LogLevel::Info,
+                3 => LogLevel::Debug,
+                _ => LogLevel::Trace,
+            }.to_level_filter(),
+        )
+        .try_init()?;
 
-    debug!("Generated {:#?}", ebuild);
+    // call the real cargo_ebuild
+    let ebuild = run_cargo_ebuild(args)?;
+    debug!("Generated ebuild {:#?}", ebuild);
 
     // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild",
-                                            ebuild.name(), ebuild.version()));
-
-    debug!("Ebuild path: {:?}", ebuild_path);
+    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", ebuild.name(), ebuild.version()));
+    debug!("Ebuild file: {:?}", ebuild_path);
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()
@@ -40,11 +54,14 @@ main!(|cli: Cli, log_level: verbose| {
         .create(true)
         .truncate(true)
         .open(&ebuild_path)?;
-        // .expect("Failed to open ebuild file");
 
     // Write the ebuild
-    match ebuild.write(&mut file) {
-        Ok(_) => println!("Wrote: {}", ebuild_path.display()),
-        Err(err) => error!("{:?}", err),
-    };
-});
+    ebuild.write(&mut file)?;
+    if is_quiet {
+        info!("Wrote: {}", ebuild_path.display());
+    } else {
+        println!("Wrote: {}", ebuild_path.display());
+    }
+
+    Ok(())
+}

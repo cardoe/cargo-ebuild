@@ -21,16 +21,10 @@ use quicli::prelude::StructOpt;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 
-main!(|opt: Opt, log_level: verbose| {
+main!(|cli: Cli, log_level: verbose| {
     setup_panic!();
 
-    let ebuild = match ebuild_from_cargo(opt) {
-        Ok(ebuild) => ebuild,
-        Err(err) => {
-            error!("{}", err);
-            panic!("{}", err);
-        }
-    };
+    let ebuild = run_cargo_ebuild(cli)?;
 
     debug!("Generated {:#?}", ebuild);
 
@@ -45,8 +39,8 @@ main!(|opt: Opt, log_level: verbose| {
         .write(true)
         .create(true)
         .truncate(true)
-        .open(&ebuild_path)
-        .expect("Failed to open ebuild file");
+        .open(&ebuild_path)?;
+        // .expect("Failed to open ebuild file");
 
     // Write the ebuild
     match ebuild.write(&mut file) {

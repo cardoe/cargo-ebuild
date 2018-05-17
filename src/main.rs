@@ -9,17 +9,17 @@
  */
 
 extern crate cargo_ebuild;
-extern crate quicli;
 extern crate failure;
+extern crate quicli;
 #[macro_use]
 extern crate human_panic;
 
-use cargo_ebuild::Cli;
 use cargo_ebuild::run_cargo_ebuild;
+use cargo_ebuild::Cli;
+use failure::Error;
+use quicli::prelude::*;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use quicli::prelude::*;
-use failure::Error;
 
 fn main() -> std::result::Result<(), Error> {
     let args = Cli::from_args();

@@ -1,6 +1,6 @@
 extern crate cargo;
-extern crate time;
 extern crate quicli;
+extern crate time;
 #[macro_use]
 extern crate failure;
 
@@ -71,8 +71,7 @@ pub fn run_cargo_ebuild(cli: Cli) -> result::Result<Ebuild, Error> {
     let _crate_root = package
         .manifest_path()
         .parent()
-        .ok_or_else(|| err_msg(format_err!("Cargo.toml must have a parent"))
-        )?;
+        .ok_or_else(|| err_msg(format_err!("Cargo.toml must have a parent")))?;
 
     // Resolve all dependencies (generate or use Cargo.lock as necessary)
     let resolve = md.resolve()?;
@@ -99,8 +98,11 @@ pub fn run_cargo_ebuild(cli: Cli) -> result::Result<Ebuild, Error> {
 
                 match GitSource::new(&src_id, &config) {
                     Ok(git_src) => git_crates.push(git_src.url().to_string()),
-                    Err(err) => error!("Not able to find git source for {} caused by {}",
-                                       pkg.name(), err),
+                    Err(err) => error!(
+                        "Not able to find git source for {} caused by {}",
+                        pkg.name(),
+                        err
+                    ),
                 };
 
                 None
@@ -115,7 +117,6 @@ pub fn run_cargo_ebuild(cli: Cli) -> result::Result<Ebuild, Error> {
 
     // sort the crates
     crates.sort();
-
 
     // root package metadata
     let metadata = package.manifest().metadata();

@@ -1,5 +1,6 @@
 sudo: false
 language: rust
+cache: cargo
 dist: trusty
 rust:
 - nightly
@@ -9,6 +10,7 @@ rust:
 matrix:
   allow_failures:
   - rust: nightly
+  - rust: 1.17.0
 before_script:
 - |
   pip install 'travis-cargo<0.2' --user &&

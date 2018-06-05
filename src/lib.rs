@@ -14,6 +14,7 @@ extern crate time;
 extern crate structopt;
 #[macro_use]
 extern crate failure;
+extern crate log;
 
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;

@@ -12,8 +12,11 @@
 extern crate human_panic;
 #[macro_use]
 extern crate structopt;
+extern crate env_logger;
 extern crate cargo_ebuild;
+extern crate log;
 
+use log::Level as LogLevel;
 use cargo_ebuild::*;
 use structopt::StructOpt;
 
@@ -32,9 +35,23 @@ pub struct Cli {
 }
 
 fn main() -> Result<(), Error> {
+    setup_panic!();
+
     let args = Cli::from_args();
 
-    setup_panic!();
+    env_logger::Builder::new()
+        .filter(
+            None,
+            match args.verbosity {
+                0 => LogLevel::Error,
+                1 => LogLevel::Warn,
+                2 => LogLevel::Info,
+                3 => LogLevel::Debug,
+                _ => LogLevel::Trace,
+            }.to_level_filter(),
+        )
+        .try_init()?;
+
 
     run_cargo_ebuild(args.cmd)
 }

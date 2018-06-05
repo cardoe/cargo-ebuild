@@ -27,9 +27,9 @@ Options:
 "#;
 
 fn main() {
-    let config = Config::default().unwrap();
+    let mut config = Config::default().unwrap();
     let args = env::args().collect::<Vec<_>>();
-    let result = cargo::call_main_without_stdin(cargo_ebuild::real_main, &config, USAGE, &args, false);
+    let result = cargo_ebuild::real_main(&mut config);
     if let Err(e) = result {
         cargo::exit_with_error(e, &mut *config.shell());
     }

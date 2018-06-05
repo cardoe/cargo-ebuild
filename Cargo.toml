@@ -17,7 +17,7 @@ Generates an ebuild for a package using the in-tree eclasses.
 repository = "cardoe/cargo-ebuild"
 
 [dependencies]
-cargo = "^0.21"
+cargo = "^0.27"
 serde = "1"
 serde_derive = "1"
 time = "^0.1"

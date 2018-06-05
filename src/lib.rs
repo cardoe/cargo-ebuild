@@ -12,6 +12,7 @@ extern crate cargo;
 extern crate time;
 #[macro_use]
 extern crate structopt;
+#[macro_use]
 extern crate failure;
 
 use cargo::core::registry::PackageRegistry;
@@ -30,8 +31,8 @@ pub enum Command {
     #[structopt(name = "build")]
     /// Build an ebuild file from a cargo project
     Build {
-        #[structopt(long = "manifest-path", short = "m")]
-        manifest_path: Option<String>,
+        #[structopt(long = "ebuild-path", short = "o")]
+        ebuild_path: Option<String>,
     },
 }
 
@@ -39,12 +40,12 @@ pub enum Command {
 pub fn run_cargo_ebuild(cmd: Option<Command>) -> Result<(), Error> {
     // If no command is specified run build with default conf
     let cmd = cmd.unwrap_or(Command::Build {
-        manifest_path: None,
+        ebuild_path: None,
     });
 
     // Here will be the match of the commands, now just example
     match cmd {
-        Command::Build { manifest_path } => build(manifest_path),
+        Command::Build { ebuild_path } => build(ebuild_path),
     }
 }
 
@@ -90,7 +91,7 @@ fn resolve<'a>(
     Ok((packages, resolve))
 }
 
-pub fn build(_manifest_path: Option<String>) -> Result<(), Error> {
+pub fn build(ebuild_path: Option<String>) -> Result<(), Error> {
     // build the crate URIs
     let config = &mut Config::default()?;
 
@@ -151,7 +152,20 @@ pub fn build(_manifest_path: Option<String>) -> Result<(), Error> {
         .unwrap_or_else(|| String::from("unknown license"));
 
     // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
+    let path = ebuild_path.map_or_else(
+        || PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version())),
+        |path| PathBuf::from(path)
+        );
+
+    let ebuild_path = if path.is_dir() {
+        if !path.exists() {
+            return Err(format_err!("No such file or directory"))
+        }
+        let ebuild_name = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
+        path.join(ebuild_name)
+    } else {
+        path
+    };
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()

@@ -12,12 +12,12 @@
 extern crate human_panic;
 #[macro_use]
 extern crate structopt;
-extern crate env_logger;
 extern crate cargo_ebuild;
+extern crate env_logger;
 extern crate log;
 
-use log::Level as LogLevel;
 use cargo_ebuild::*;
+use log::Level as LogLevel;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -51,7 +51,6 @@ fn main() -> Result<(), Error> {
             }.to_level_filter(),
         )
         .try_init()?;
-
 
     run_cargo_ebuild(args.cmd)
 }

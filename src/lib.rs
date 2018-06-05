@@ -9,9 +9,9 @@
  */
 
 extern crate cargo;
-#[macro_use]
-extern crate serde_derive;
 extern crate time;
+#[macro_use]
+extern crate structopt;
 
 use cargo::{Config, CliResult};
 use cargo::core::{Package, PackageSet, Resolve, Workspace};
@@ -23,10 +23,27 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
-#[derive(Deserialize)]
-pub struct Options {
-    flag_verbose: u32,
-    flag_quiet: Option<bool>,
+#[derive(Debug, StructOpt)]
+pub enum Command {
+    #[structopt(name = "build")]
+    /// Build an ebuild file from a cargo project
+    Build {
+        #[structopt(long = "manifest-path", short = "m")]
+        manifest_path: Option<String>,
+    },
+}
+
+/// Parse cli commands
+pub fn run_cargo_ebuild(config: &mut cargo::Config, cmd: Option<Command>) -> CliResult {
+    // If no command is specified run build with default conf
+    let cmd = cmd.unwrap_or(Command::Build {
+        manifest_path: None,
+    });
+
+    // Here will be the match of the commands, now just example
+    match cmd {
+        Command::Build { manifest_path } => real_main(config, manifest_path),
+    }
 }
 
 /// Finds the root Cargo.toml of the workspace
@@ -70,7 +87,7 @@ fn resolve<'a>(registry: &mut PackageRegistry<'a>,
     Ok((packages, resolve))
 }
 
-pub fn real_main(config: &mut Config) -> CliResult {
+pub fn real_main(config: &mut cargo::Config, _manifest_path: Option<String>) -> CliResult {
     config
         .configure(0,
                    Some(false),

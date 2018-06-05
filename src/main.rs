@@ -10,28 +10,32 @@
 
 extern crate cargo_ebuild;
 extern crate cargo;
+#[macro_use]
+extern crate structopt;
 
 use cargo::Config;
-use std::env;
+use cargo_ebuild::*;
+use structopt::StructOpt;
 
-const USAGE: &'static str = r#"
-Create an ebuild for a project
+#[derive(StructOpt, Debug)]
+pub struct Cli {
+    #[structopt(subcommand)] // the real cargo-ebuild commands
+    pub cmd: Option<Command>,
 
-Usage:
-    cargo ebuild [options]
+    /// Prevent cargo-ebuild and cargo to use stdout
+    #[structopt(short = "q", long = "quiet")]
+    pub quiet: bool,
 
-Options:
-    -h, --help          Print this message
-    -v, --verbose       Use verbose output
-    -q, --quiet         No output printed to stdout
-"#;
+    /// Verbose mode (-v, -vv, -vvv, -vvvv)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    pub verbosity: u8,
+}
 
 fn main() {
+    let args = Cli::from_args();
     let mut config = Config::default().unwrap();
-    let args = env::args().collect::<Vec<_>>();
-    let result = cargo_ebuild::real_main(&mut config);
+    let result = run_cargo_ebuild(&mut config, args.cmd);
     if let Err(e) = result {
         cargo::exit_with_error(e, &mut *config.shell());
     }
 }
-

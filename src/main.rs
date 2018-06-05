@@ -8,12 +8,12 @@
  * except according to those terms.
  */
 
-extern crate cargo_ebuild;
-extern crate cargo;
+#[macro_use]
+extern crate human_panic;
 #[macro_use]
 extern crate structopt;
+extern crate cargo_ebuild;
 
-use cargo::Config;
 use cargo_ebuild::*;
 use structopt::StructOpt;
 
@@ -31,11 +31,10 @@ pub struct Cli {
     pub verbosity: u8,
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let args = Cli::from_args();
-    let mut config = Config::default().unwrap();
-    let result = run_cargo_ebuild(&mut config, args.cmd);
-    if let Err(e) = result {
-        cargo::exit_with_error(e, &mut *config.shell());
-    }
+
+    setup_panic!();
+
+    run_cargo_ebuild(args.cmd)
 }

@@ -12,16 +12,18 @@ extern crate cargo;
 extern crate time;
 #[macro_use]
 extern crate structopt;
+extern crate failure;
 
-use cargo::{Config, CliResult};
-use cargo::core::{Package, PackageSet, Resolve, Workspace};
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
+use cargo::core::{Package, PackageSet, Resolve, Workspace};
 use cargo::ops;
 use cargo::util::{important_paths, CargoResult};
+use cargo::Config;
+pub use failure::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::PathBuf; // re-exported to main
 
 #[derive(Debug, StructOpt)]
 pub enum Command {
@@ -34,7 +36,7 @@ pub enum Command {
 }
 
 /// Parse cli commands
-pub fn run_cargo_ebuild(config: &mut cargo::Config, cmd: Option<Command>) -> CliResult {
+pub fn run_cargo_ebuild(cmd: Option<Command>) -> Result<(), Error> {
     // If no command is specified run build with default conf
     let cmd = cmd.unwrap_or(Command::Build {
         manifest_path: None,
@@ -42,7 +44,7 @@ pub fn run_cargo_ebuild(config: &mut cargo::Config, cmd: Option<Command>) -> Cli
 
     // Here will be the match of the commands, now just example
     match cmd {
-        Command::Build { manifest_path } => real_main(config, manifest_path),
+        Command::Build { manifest_path } => build(manifest_path),
     }
 }
 
@@ -55,51 +57,55 @@ fn workspace(config: &Config) -> CargoResult<Workspace> {
 /// Generates a package registry by using the Cargo.lock or creating one as necessary
 fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
     let mut registry = PackageRegistry::new(config)?;
-    registry
-        .add_sources(&[package.package_id().source_id().clone()])?;
+    registry.add_sources(&[package.package_id().source_id().clone()])?;
     Ok(registry)
 }
 
 /// Resolve the packages necessary for the workspace
-fn resolve<'a>(registry: &mut PackageRegistry<'a>,
-               workspace: &Workspace<'a>)
-               -> CargoResult<(PackageSet<'a>, Resolve)> {
+fn resolve<'a>(
+    registry: &mut PackageRegistry<'a>,
+    workspace: &Workspace<'a>,
+) -> CargoResult<(PackageSet<'a>, Resolve)> {
     // resolve our dependencies
     let (packages, resolve) = ops::resolve_ws(workspace)?;
 
     // resolve with all features set so we ensure we get all of the depends downloaded
-    let resolve = ops::resolve_with_previous(registry,
-                                             workspace,
-                                             /* resolve it all */
-                                             Method::Everything,
-                                             /* previous */
-                                             Some(&resolve),
-                                             /* don't avoid any */
-                                             None,
-                                             /* specs */
-                                             &[],
-                                             // register patches
-                                             true,
-                                             // warn
-                                             false
-                                             )?;
+    let resolve = ops::resolve_with_previous(
+        registry,
+        workspace,
+        /* resolve it all */
+        Method::Everything,
+        /* previous */
+        Some(&resolve),
+        /* don't avoid any */
+        None,
+        /* specs */
+        &[],
+        // register patches
+        true,
+        // warn
+        false,
+    )?;
 
     Ok((packages, resolve))
 }
 
-pub fn real_main(config: &mut cargo::Config, _manifest_path: Option<String>) -> CliResult {
-    config
-        .configure(0,
-                   Some(false),
-                   /* color */
-                   &None,
-                   /* frozen */
-                   false,
-                   /* locked */
-                   false,
-                   // unstable flag
-                   &Vec::new()
-)?;
+pub fn build(_manifest_path: Option<String>) -> Result<(), Error> {
+    // build the crate URIs
+    let config = &mut Config::default()?;
+
+    config.configure(
+        0,
+        Some(false),
+        /* color */
+        &None,
+        /* frozen */
+        false,
+        /* locked */
+        false,
+        // unstable flag
+        &Vec::new(),
+    )?;
 
     // Load the workspace and current package
     let workspace = workspace(config)?;
@@ -130,12 +136,13 @@ pub fn real_main(config: &mut cargo::Config, _manifest_path: Option<String>) -> 
         .unwrap_or_else(|| package.name().to_string());
 
     // package homepage
-    let homepage =
-        metadata.homepage.as_ref().cloned().unwrap_or(metadata
-                                                          .repository
-                                                          .as_ref()
-                                                          .cloned()
-                                                          .unwrap_or_else(|| String::from("")));
+    let homepage = metadata.homepage.as_ref().cloned().unwrap_or(
+        metadata
+            .repository
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| String::from("")),
+    );
 
     let license = metadata
         .license
@@ -148,25 +155,24 @@ pub fn real_main(config: &mut cargo::Config, _manifest_path: Option<String>) -> 
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(&ebuild_path)
-                            .expect("failed to create ebuild");
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&ebuild_path)?;
 
     // write the contents out
-    write!(file,
-                include_str!("ebuild.template"),
-                description = desc.trim(),
-                homepage = homepage.trim(),
-                license = license.trim(),
-                crates = crates.join(""),
-                cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-                this_year = 1900 + time::now().tm_year)
-                .expect("unable to write ebuild to disk");
+    write!(
+        file,
+        include_str!("ebuild.template"),
+        description = desc.trim(),
+        homepage = homepage.trim(),
+        license = license.trim(),
+        crates = crates.join(""),
+        cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
+        this_year = 1900 + time::now().tm_year
+    )?;
 
     println!("Wrote: {}", ebuild_path.display());
-
 
     Ok(())
 }

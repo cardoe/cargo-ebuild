@@ -25,3 +25,7 @@ log = "0.4.0"
 env_logger = "0.5.10"
 cargo_metadata = "0.5.4"
 toml = "0.4.6"
+
+[dev-dependencies]
+assert_cli = "0.6.1"
+tempdir = "0.3.7"

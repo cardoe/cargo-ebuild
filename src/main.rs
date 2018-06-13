@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 Doug Goldstein <cardoe@cardoe.com>
+ * Copyright 2016-2018 Doug Goldstein <cardoe@cardoe.com>
  *
  * Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
  * http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
@@ -8,162 +8,49 @@
  * except according to those terms.
  */
 
-extern crate cargo;
 #[macro_use]
-extern crate serde_derive;
-extern crate time;
+extern crate human_panic;
+#[macro_use]
+extern crate structopt;
+extern crate cargo_ebuild;
+extern crate env_logger;
+extern crate log;
 
-use cargo::{Config, CliResult};
-use cargo::core::{Package, PackageSet, Resolve, Workspace};
-use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Method;
-use cargo::ops;
-use cargo::util::{important_paths, CargoResult, CargoResultExt};
-use std::env;
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::path::PathBuf;
+use cargo_ebuild::*;
+use log::Level as LogLevel;
+use structopt::StructOpt;
 
-/// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
-    Workspace::new(&root, config)
+#[derive(StructOpt, Debug)]
+pub struct Cli {
+    #[structopt(subcommand)] // the real cargo-ebuild commands
+    pub cmd: Option<Command>,
+
+    /// Prevent cargo-ebuild and cargo to use stdout
+    #[structopt(short = "q", long = "quiet")]
+    pub quiet: bool,
+
+    /// Verbose mode (-v, -vv, -vvv, -vvvv)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    pub verbosity: u8,
 }
 
-/// Generates a package registry by using the Cargo.lock or creating one as necessary
-fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = PackageRegistry::new(config)?;
-    registry
-        .add_sources(&[package.package_id().source_id().clone()])?;
-    Ok(registry)
-}
+fn main() -> Result<(), Error> {
+    setup_panic!();
 
-/// Resolve the packages necessary for the workspace
-fn resolve<'a>(registry: &mut PackageRegistry,
-               workspace: &'a Workspace)
-               -> CargoResult<(PackageSet<'a>, Resolve)> {
-    // resolve our dependencies
-    let (packages, resolve) = ops::resolve_ws(workspace)?;
+    let args = Cli::from_args();
 
-    // resolve with all features set so we ensure we get all of the depends downloaded
-    let resolve = ops::resolve_with_previous(registry,
-                                             workspace,
-                                             /* resolve it all */
-                                             Method::Everything,
-                                             /* previous */
-                                             Some(&resolve),
-                                             /* don't avoid any */
-                                             None,
-                                             /* specs */
-                                             &[])?;
+    env_logger::Builder::new()
+        .filter(
+            None,
+            match args.verbosity {
+                0 => LogLevel::Error,
+                1 => LogLevel::Warn,
+                2 => LogLevel::Info,
+                3 => LogLevel::Debug,
+                _ => LogLevel::Trace,
+            }.to_level_filter(),
+        )
+        .try_init()?;
 
-    Ok((packages, resolve))
-}
-
-#[derive(Deserialize)]
-struct Options {
-    flag_verbose: u32,
-    flag_quiet: Option<bool>,
-}
-
-const USAGE: &'static str = r#"
-Create an ebuild for a project
-
-Usage:
-    cargo ebuild [options]
-
-Options:
-    -h, --help          Print this message
-    -v, --verbose       Use verbose output
-    -q, --quiet         No output printed to stdout
-"#;
-
-fn main() {
-    let config = Config::default().unwrap();
-    let args = env::args().collect::<Vec<_>>();
-    let result = cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false);
-    if let Err(e) = result {
-        cargo::exit_with_error(e, &mut *config.shell());
-    }
-}
-
-fn real_main(options: Options, config: &Config) -> CliResult {
-    config
-        .configure(options.flag_verbose,
-                   options.flag_quiet,
-                   /* color */
-                   &None,
-                   /* frozen */
-                   false,
-                   /* locked */
-                   false)?;
-
-    // Load the workspace and current package
-    let workspace = workspace(config, None)?;
-    let package = workspace.current()?;
-
-    // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let mut registry = registry(config, &package)?;
-    let resolve = resolve(&mut registry, &workspace)?;
-
-    // build the crates the package needs
-    let mut crates = resolve
-        .1
-        .iter()
-        .map(|pkg| format!("{}-{}\n", pkg.name(), pkg.version()))
-        .collect::<Vec<String>>();
-
-    // sort the crates
-    crates.sort();
-
-    // root package metadata
-    let metadata = package.manifest().metadata();
-
-    // package description
-    let desc = metadata
-        .description
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from(package.name()));
-
-    // package homepage
-    let homepage =
-        metadata.homepage.as_ref().cloned().unwrap_or(metadata
-                                                          .repository
-                                                          .as_ref()
-                                                          .cloned()
-                                                          .unwrap_or_else(|| String::from("")));
-
-    let license = metadata
-        .license
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from("unknown license"));
-
-    // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
-
-    // Open the file where we'll write the ebuild
-    let mut file = try!(OpenOptions::new()
-                            .write(true)
-                            .create(true)
-                            .truncate(true)
-                            .open(&ebuild_path)
-                            .chain_err(|| "failed to create ebuild"));
-
-    // write the contents out
-    try!(write!(file,
-                include_str!("ebuild.template"),
-                description = desc.trim(),
-                homepage = homepage.trim(),
-                license = license.trim(),
-                crates = crates.join(""),
-                cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-                this_year = 1900 + time::now().tm_year,
-                ).chain_err(|| "unable to write ebuild to disk"));
-
-    println!("Wrote: {}", ebuild_path.display());
-
-
-    Ok(())
+    run_cargo_ebuild(args.cmd)
 }

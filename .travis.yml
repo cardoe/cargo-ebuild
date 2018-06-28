@@ -6,6 +6,7 @@ rust:
 - beta
 - stable
 - 1.26.0 # minimum supported version (based on features)
+cache: cargo
 matrix:
   allow_failures:
   - rust: nightly

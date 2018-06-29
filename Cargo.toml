@@ -23,6 +23,7 @@ path = "src/lib.rs"
 
 [badges]
 travis-ci = { repository = "cardoe/cargo-ebuild" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
 cargo = "^0.21"

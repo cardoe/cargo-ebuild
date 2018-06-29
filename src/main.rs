@@ -13,9 +13,9 @@ extern crate cargo_ebuild;
 #[macro_use]
 extern crate structopt;
 
-use cargo::core::shell::Shell;
-use cargo::Config;
+use cargo::util::CliError;
 use cargo_ebuild::run;
+use std::process;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -47,17 +47,19 @@ enum Opt {
 fn main() {
     let Opt::Ebuild(opt) = Opt::from_args();
 
-    // create a default Cargo config
-    let mut config = match Config::default() {
-        Ok(cfg) => cfg,
-        Err(e) => {
-            let mut shell = Shell::new();
-            cargo::exit_with_error(e.into(), &mut shell)
-        }
-    };
-
     // run the actual code
-    if let Err(e) = run(opt.verbose as u32, opt.quiet, &mut config) {
-        cargo::exit_with_error(e.into(), &mut *config.shell())
+    if let Err(e) = run(opt.verbose as u32, opt.quiet) {
+        // break apart the error
+        let CliError {
+            error,
+            exit_code,
+            unknown: _unknown,
+        } = e;
+        // display a msg if we got one
+        if let Some(msg) = error {
+            eprintln!("{}", msg);
+        }
+        // exit appropriately
+        process::exit(exit_code);
     }
 }

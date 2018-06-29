@@ -59,7 +59,10 @@ fn resolve<'a>(
     Ok((packages, resolve))
 }
 
-pub fn run(verbose: u32, quiet: bool, config: &Config) -> CliResult {
+pub fn run(verbose: u32, quiet: bool) -> CliResult {
+    // create a default Cargo config
+    let config = Config::default()?;
+
     config.configure(
         verbose,
         Some(quiet),
@@ -72,11 +75,11 @@ pub fn run(verbose: u32, quiet: bool, config: &Config) -> CliResult {
     )?;
 
     // Load the workspace and current package
-    let workspace = workspace(config, None)?;
+    let workspace = workspace(&config, None)?;
     let package = workspace.current()?;
 
     // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let mut registry = registry(config, &package)?;
+    let mut registry = registry(&config, &package)?;
     let resolve = resolve(&mut registry, &workspace)?;
 
     // build the crates the package needs

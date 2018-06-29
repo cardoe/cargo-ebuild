@@ -9,8 +9,6 @@
  */
 
 extern crate cargo;
-#[macro_use]
-extern crate serde_derive;
 extern crate time;
 
 use cargo::core::registry::PackageRegistry;
@@ -61,16 +59,10 @@ fn resolve<'a>(
     Ok((packages, resolve))
 }
 
-#[derive(Deserialize)]
-pub struct Options {
-    flag_verbose: u32,
-    flag_quiet: Option<bool>,
-}
-
-pub fn real_main(options: Options, config: &Config) -> CliResult {
+pub fn run(verbose: u32, quiet: bool, config: &Config) -> CliResult {
     config.configure(
-        options.flag_verbose,
-        options.flag_quiet,
+        verbose,
+        Some(quiet),
         /* color */
         &None,
         /* frozen */

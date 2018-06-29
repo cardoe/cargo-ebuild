@@ -10,28 +10,54 @@
 
 extern crate cargo;
 extern crate cargo_ebuild;
+#[macro_use]
+extern crate structopt;
 
+use cargo::core::shell::Shell;
 use cargo::Config;
-use cargo_ebuild::real_main;
-use std::env;
+use cargo_ebuild::run;
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
-const USAGE: &'static str = r#"
-Create an ebuild for a project
+#[derive(StructOpt, Debug)]
+struct Args {
+    /// Silence all output
+    #[structopt(short = "q", long = "quiet")]
+    quiet: bool,
+    /// Verbose mode (-v, -vv, -vvv, etc.)
+    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
+    verbose: usize,
+}
 
-Usage:
-    cargo ebuild [options]
-
-Options:
-    -h, --help          Print this message
-    -v, --verbose       Use verbose output
-    -q, --quiet         No output printed to stdout
-"#;
+#[derive(StructOpt, Debug)]
+#[structopt(bin_name = "cargo")]
+enum Opt {
+    #[structopt(
+        name = "ebuild",
+        raw(
+            setting = "AppSettings::UnifiedHelpMessage",
+            setting = "AppSettings::DeriveDisplayOrder",
+            setting = "AppSettings::DontCollapseArgsInUsage"
+        )
+    )]
+    /// Generates an ebuild for a given Cargo project
+    Ebuild(Args),
+}
 
 fn main() {
-    let config = Config::default().unwrap();
-    let args = env::args().collect::<Vec<_>>();
-    let result = cargo::call_main_without_stdin(real_main, &config, USAGE, &args, false);
-    if let Err(e) = result {
-        cargo::exit_with_error(e, &mut *config.shell());
+    let Opt::Ebuild(opt) = Opt::from_args();
+
+    // create a default Cargo config
+    let mut config = match Config::default() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            let mut shell = Shell::new();
+            cargo::exit_with_error(e.into(), &mut shell)
+        }
+    };
+
+    // run the actual code
+    if let Err(e) = run(opt.verbose as u32, opt.quiet, &mut config) {
+        cargo::exit_with_error(e.into(), &mut *config.shell())
     }
 }

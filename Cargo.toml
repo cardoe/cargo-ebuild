@@ -13,6 +13,14 @@ description = """
 Generates an ebuild for a package using the in-tree eclasses.
 """
 
+[[bin]]
+name = "cargo-ebuild"
+path = "src/main.rs"
+
+[lib]
+name = "cargo_ebuild"
+path = "src/lib.rs"
+
 [badges]
 travis-ci = { repository = "cardoe/cargo-ebuild" }
 

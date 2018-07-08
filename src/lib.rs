@@ -121,28 +121,24 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
 
     // Open the file where we'll write the ebuild
-    let mut file = try!(
-        OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&ebuild_path)
-            .chain_err(|| "failed to create ebuild")
-    );
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&ebuild_path)
+        .chain_err(|| "failed to create ebuild")?;
 
     // write the contents out
-    try!(
-        write!(
-            file,
-            include_str!("ebuild.template"),
-            description = desc.trim(),
-            homepage = homepage.trim(),
-            license = license.trim(),
-            crates = crates.join(""),
-            cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-            this_year = 1900 + time::now().tm_year,
-        ).chain_err(|| "unable to write ebuild to disk")
-    );
+    write!(
+        file,
+        include_str!("ebuild.template"),
+        description = desc.trim(),
+        homepage = homepage.trim(),
+        license = license.trim(),
+        crates = crates.join(""),
+        cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
+        this_year = 1900 + time::now().tm_year,
+    ).chain_err(|| "unable to write ebuild to disk")?;
 
     println!("Wrote: {}", ebuild_path.display());
 

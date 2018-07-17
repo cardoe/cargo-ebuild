@@ -13,6 +13,8 @@ extern crate time;
 extern crate toml;
 #[macro_use]
 extern crate failure;
+#[macro_use]
+extern crate log;
 
 pub use failure::Error; // re-exported to main
 use std::env;
@@ -77,12 +79,30 @@ pub fn ebuild(ebuild_path: Option<String>, manifest_path: Option<String>) -> Res
     let package = table
         .get("package")
         .ok_or_else(|| format_err!("Field \"package\" is missing in Cargo manifest"))?;
-    let name = read_from_manifest(package, &"name").unwrap_or_else(|| String::from(""));
-    let license = read_from_manifest(package, &"license").unwrap_or_else(|| String::from(""));
-    let description = read_from_manifest(package, &"description").unwrap_or_else(|| name.clone());
-    let repository = read_from_manifest(package, &"repository").unwrap_or_else(|| String::from(""));
-    let homepage = read_from_manifest(package, &"homepage").unwrap_or_else(|| repository);
-    let version = read_from_manifest(package, &"version").unwrap_or_else(|| String::from(""));
+    let name = read_from_manifest(package, &"name").unwrap_or_else(|| {
+        warn!("Not found package's name field in Cargo.toml. Manual setup needed");
+        String::from("")
+    });
+    let license = read_from_manifest(package, &"license").unwrap_or_else(|| {
+        warn!("Not found package's name field in Cargo.toml. Manual setup needed");
+        String::from("")
+    });
+    let description = read_from_manifest(package, &"description").unwrap_or_else(|| {
+        warn!("Not found package's description field in Cargo.toml. Used package's name");
+        name.clone()
+    });
+    let repository = read_from_manifest(package, &"repository").unwrap_or_else(|| {
+        warn!("Not found package's repository field in Cargo.toml. Manual setup needed");
+        String::from("")
+    });
+    let homepage = read_from_manifest(package, &"homepage").unwrap_or_else(|| {
+        warn!("Not found package's name field in Cargo.toml. Manual setup needed");
+        repository
+    });
+    let version = read_from_manifest(package, &"version").unwrap_or_else(|| {
+        warn!("Not found package's version field in Cargo.toml. Manual setup needed");
+        String::from("")
+    });
 
     // build up the ebuild path
     let path = match ebuild_path {
@@ -125,9 +145,5 @@ pub fn ebuild(ebuild_path: Option<String>, manifest_path: Option<String>) -> Res
 }
 
 fn read_from_manifest(package: &Value, query: &str) -> Option<String> {
-    package
-        .get(query)?
-        .clone()
-        .try_into::<String>()
-        .ok()
+    package.get(query)?.clone().try_into::<String>().ok()
 }

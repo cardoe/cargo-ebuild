@@ -11,8 +11,11 @@
 extern crate cargo_ebuild;
 #[macro_use]
 extern crate structopt;
+extern crate env_logger;
+extern crate log;
 
 use cargo_ebuild::*;
+use log::Level as LogLevel;
 use std::process;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -60,8 +63,21 @@ pub fn run(cmd: Option<Command>) -> Result<(), Error> {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let opt = Opt::from_args();
+
+    env_logger::Builder::new()
+        .filter(
+            None,
+            match opt.verbose {
+                0 => LogLevel::Error,
+                1 => LogLevel::Warn,
+                2 => LogLevel::Info,
+                3 => LogLevel::Debug,
+                _ => LogLevel::Trace,
+            }.to_level_filter(),
+        )
+        .try_init()?;
 
     // run the actual code
     if let Err(error) = run(opt.cmd) {
@@ -70,4 +86,6 @@ fn main() {
         // exit appropriately
         process::exit(1);
     }
+
+    Ok(())
 }

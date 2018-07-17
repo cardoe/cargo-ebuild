@@ -30,7 +30,7 @@ struct Args {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(bin_name = "cargo")]
+#[structopt(name = "cargo", raw(setting = "AppSettings::ColoredHelp"))]
 enum Opt {
     #[structopt(
         name = "ebuild",

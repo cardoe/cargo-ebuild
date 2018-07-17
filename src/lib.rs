@@ -6,141 +6,128 @@
  * <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
- */
+*/
 
-extern crate cargo;
+extern crate cargo_metadata;
 extern crate time;
+extern crate toml;
+#[macro_use]
+extern crate failure;
 
-use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Method;
-use cargo::core::{Package, PackageSet, Resolve, Workspace};
-use cargo::ops;
-use cargo::util::{important_paths, CargoResult, CargoResultExt};
-use cargo::{CliResult, Config};
+pub use failure::Error; // re-exported to main
+use std::env;
+use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::prelude::*;
 use std::io::Write;
+use std::path::Path;
 use std::path::PathBuf;
+use toml::Value;
 
-/// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
-    Workspace::new(&root, config)
-}
+pub fn ebuild(ebuild_path: Option<String>, manifest_path: Option<String>) -> Result<(), Error> {
+    let manifest = manifest_path.map_or_else(
+        || env::current_dir().unwrap().join("Cargo.toml"),
+        |path| Path::new(&path).to_path_buf(),
+    );
 
-/// Generates a package registry by using the Cargo.lock or creating one as necessary
-fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = PackageRegistry::new(config)?;
-    registry.add_sources(&[package.package_id().source_id().clone()])?;
-    Ok(registry)
-}
+    if !manifest.is_file() {
+        return Err(format_err!(
+            "Cargo manifest not found at: {}",
+            manifest.display()
+        ));
+    }
 
-/// Resolve the packages necessary for the workspace
-fn resolve<'a>(
-    registry: &mut PackageRegistry,
-    workspace: &'a Workspace,
-) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    // resolve our dependencies
-    let (packages, resolve) = ops::resolve_ws(workspace)?;
+    let metadata = cargo_metadata::metadata_deps(Some(&manifest), true)
+        .map_err(|err| format_err!("Error while access cargo metadata: {}", err))?;
 
-    // resolve with all features set so we ensure we get all of the depends downloaded
-    let resolve = ops::resolve_with_previous(
-        registry,
-        workspace,
-        /* resolve it all */
-        Method::Everything,
-        /* previous */
-        Some(&resolve),
-        /* don't avoid any */
-        None,
-        /* specs */
-        &[],
-    )?;
+    let resolve = metadata
+        .resolve
+        .ok_or_else(|| format_err!("No project dependences"))?
+        .nodes;
 
-    Ok((packages, resolve))
-}
-
-pub fn ebuild(verbose: u32, quiet: bool) -> CliResult {
-    // create a default Cargo config
-    let config = Config::default()?;
-
-    config.configure(
-        verbose,
-        Some(quiet),
-        /* color */
-        &None,
-        /* frozen */
-        false,
-        /* locked */
-        false,
-    )?;
-
-    // Load the workspace and current package
-    let workspace = workspace(&config, None)?;
-    let package = workspace.current()?;
-
-    // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let mut registry = registry(&config, &package)?;
-    let resolve = resolve(&mut registry, &workspace)?;
+    let mut git_crates = Vec::new();
 
     // build the crates the package needs
     let mut crates = resolve
-        .1
         .iter()
-        .map(|pkg| format!("{}-{}\n", pkg.name(), pkg.version()))
+        .cloned()
+        .filter_map(|pkg| {
+            let infopkg: Vec<&str> = pkg.id.split(' ').collect();
+            if infopkg.len() != 3 {
+                None
+            } else if infopkg[2].starts_with("(git") {
+                git_crates.push(infopkg[2][1..infopkg[2].len()].to_string());
+                None
+            } else {
+                Some(format!("{}-{}", infopkg[0], infopkg[1]))
+            }
+        })
         .collect::<Vec<String>>();
 
     // sort the crates
     crates.sort();
 
-    // root package metadata
-    let metadata = package.manifest().metadata();
+    let mut string = String::new();
+    File::open(&manifest)?.read_to_string(&mut string)?;
 
-    // package description
-    let desc = metadata
-        .description
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from(package.name()));
-
-    // package homepage
-    let homepage = metadata.homepage.as_ref().cloned().unwrap_or(
-        metadata
-            .repository
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| String::from("")),
-    );
-
-    let license = metadata
-        .license
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from("unknown license"));
+    let parsed_manifest = string.parse::<Value>()?;
+    let table = &parsed_manifest
+        .as_table()
+        .ok_or_else(|| format_err!("Cargo manifest does not contain a toml table"))?;
+    let package = table
+        .get("package")
+        .ok_or_else(|| format_err!("Field \"package\" is missing in Cargo manifest"))?;
+    let name = read_from_manifest(package, &"name").unwrap_or_else(|| String::from(""));
+    let license = read_from_manifest(package, &"license").unwrap_or_else(|| String::from(""));
+    let description = read_from_manifest(package, &"description").unwrap_or_else(|| name.clone());
+    let repository = read_from_manifest(package, &"repository").unwrap_or_else(|| String::from(""));
+    let homepage = read_from_manifest(package, &"homepage").unwrap_or_else(|| repository);
+    let version = read_from_manifest(package, &"version").unwrap_or_else(|| String::from(""));
 
     // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
+    let path = match ebuild_path {
+        Some(path_arg) => PathBuf::from(path_arg),
+        None => std::env::current_dir().unwrap(),
+    };
+
+    let ebuild_path = if path.is_dir() {
+        if !path.exists() {
+            return Err(format_err!("No such file or directory"));
+        }
+        let ebuild_name = PathBuf::from(format!("{}-{}.ebuild", name, version));
+        path.join(ebuild_name)
+    } else {
+        path
+    };
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open(&ebuild_path)
-        .chain_err(|| "failed to create ebuild")?;
+        .open(&ebuild_path)?;
 
     // write the contents out
-    write!(
+    writeln!(
         file,
         include_str!("ebuild.template"),
-        description = desc.trim(),
+        description = description.trim(),
         homepage = homepage.trim(),
         license = license.trim(),
-        crates = crates.join(""),
-        cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
-        this_year = 1900 + time::now().tm_year,
-    ).chain_err(|| "unable to write ebuild to disk")?;
+        crates = crates.join("\n"),
+        cargo_ebuild_ver = &env!("CARGO_PKG_VERSION"),
+        this_year = 1900 + time::now().tm_year
+    )?;
 
     println!("Wrote: {}", ebuild_path.display());
 
     Ok(())
+}
+
+fn read_from_manifest(package: &Value, query: &str) -> Option<String> {
+    package
+        .get(query)?
+        .clone()
+        .try_into::<String>()
+        .ok()
 }

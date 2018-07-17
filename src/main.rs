@@ -8,13 +8,11 @@
  * except according to those terms.
  */
 
-extern crate cargo;
 extern crate cargo_ebuild;
 #[macro_use]
 extern crate structopt;
 
-use cargo::util::CliError;
-use cargo::CliResult;
+use cargo_ebuild::*;
 use std::process;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -37,17 +35,28 @@ struct Opt {
 pub enum Command {
     #[structopt(name = "ebuild")]
     /// Build an ebuild file from a cargo project
-    Ebuild,
+    Ebuild {
+        #[structopt(long = "ebuild-path", short = "o")]
+        ebuild_path: Option<String>,
+        #[structopt(long = "manifest-path", short = "m")]
+        manifest_path: Option<String>,
+    },
 }
 
 /// Parse cli commands
-pub fn run(cmd: Option<Command>, verbose: u32, quiet: bool) -> CliResult {
+pub fn run(cmd: Option<Command>) -> Result<(), Error> {
     // If no command is specified run build with default conf
-    let cmd = cmd.unwrap_or(Command::Ebuild);
+    let cmd = cmd.unwrap_or(Command::Ebuild {
+        ebuild_path: None,
+        manifest_path: None,
+    });
 
     // Here will be the match of the commands, now just example
     match cmd {
-        Command::Ebuild => cargo_ebuild::ebuild(verbose, quiet),
+        Command::Ebuild {
+            ebuild_path,
+            manifest_path,
+        } => ebuild(ebuild_path, manifest_path),
     }
 }
 
@@ -55,18 +64,10 @@ fn main() {
     let opt = Opt::from_args();
 
     // run the actual code
-    if let Err(e) = run(opt.cmd, opt.verbose as u32, opt.quiet) {
-        // break apart the error
-        let CliError {
-            error,
-            exit_code,
-            unknown: _unknown,
-        } = e;
+    if let Err(error) = run(opt.cmd) {
         // display a msg if we got one
-        if let Some(msg) = error {
-            eprintln!("{}", msg);
-        }
+        println!("{:?}", error);
         // exit appropriately
-        process::exit(exit_code);
+        process::exit(1);
     }
 }

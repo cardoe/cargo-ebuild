@@ -59,7 +59,7 @@ fn resolve<'a>(
     Ok((packages, resolve))
 }
 
-pub fn run(verbose: u32, quiet: bool) -> CliResult {
+pub fn ebuild(verbose: u32, quiet: bool) -> CliResult {
     // create a default Cargo config
     let config = Config::default()?;
 

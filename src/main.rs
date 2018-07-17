@@ -32,14 +32,8 @@ struct Args {
 #[derive(StructOpt, Debug)]
 #[structopt(bin_name = "cargo")]
 enum Opt {
-    #[structopt(
-        name = "ebuild",
-        raw(
-            setting = "AppSettings::UnifiedHelpMessage",
-            setting = "AppSettings::DeriveDisplayOrder",
-            setting = "AppSettings::DontCollapseArgsInUsage"
-        )
-    )]
+    #[structopt(name = "ebuild",
+                raw(setting = "AppSettings::ColoredHelp"))]
     /// Generates an ebuild for a given Cargo project
     Ebuild(Args),
 }

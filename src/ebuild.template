@@ -8,6 +8,8 @@ EAPI=6
 CRATES="
 {crates}"
 
+CARGO_FEATURES="{features}"
+
 inherit cargo
 
 DESCRIPTION="{description}"

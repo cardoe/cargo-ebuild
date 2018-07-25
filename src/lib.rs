@@ -104,6 +104,16 @@ pub fn ebuild(ebuild_path: Option<String>, manifest_path: Option<String>) -> Res
         String::from("")
     });
 
+    // look for features
+    let features = match metadata.packages.iter().filter(|pkg| {
+        name == pkg.name
+    }).collect::<Vec<&cargo_metadata::Package>>().pop() {
+        Some(target) => target.features.keys().map(|key| key.to_string()).collect(),
+        None => Vec::new(),
+    };
+
+    debug!("For {} found features {:?}", name, features);
+
     // build up the ebuild path
     let path = match ebuild_path {
         Some(path_arg) => PathBuf::from(path_arg),
@@ -135,6 +145,7 @@ pub fn ebuild(ebuild_path: Option<String>, manifest_path: Option<String>) -> Res
         homepage = homepage.trim(),
         license = license.trim(),
         crates = crates.join("\n"),
+        features = features.join(" "),
         cargo_ebuild_ver = &env!("CARGO_PKG_VERSION"),
         this_year = 1900 + time::now().tm_year
     )?;

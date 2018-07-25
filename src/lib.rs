@@ -83,10 +83,24 @@ pub fn ebuild(ebuild_path: Option<String>, manifest_path: Option<String>) -> Res
         warn!("Not found package's name field in Cargo.toml. Manual setup needed");
         String::from("")
     });
-    let license = read_from_manifest(package, &"license").unwrap_or_else(|| {
-        warn!("Not found package's name field in Cargo.toml. Manual setup needed");
-        String::from("")
+
+    let mut license = read_from_manifest(package, &"license").unwrap_or_else(|| {
+        warn!("Not found package's license field in Cargo.toml. Look for license-file.");
+
+        read_from_manifest(package, &"license-file").unwrap_or_else(|| {
+            warn!("Not found package's license-file field in Cargo.toml. Manual setup needed");
+            String::from("")
+        })
     });
+
+    // convert cargo format to portage
+    if license.contains('/') {
+        license = license.as_str().split('/').map(|f| f.trim()).collect::<Vec<&str>>().join(" | ");
+    } else if license.contains("AND") || license.contains("OR") {
+        license = license.replace("AND", "&&");
+        license = license.replace("OR", "||");
+    }
+
     let description = read_from_manifest(package, &"description").unwrap_or_else(|| {
         warn!("Not found package's description field in Cargo.toml. Used package's name");
         name.clone()

@@ -22,7 +22,7 @@ $ cargo install cargo-ebuild
 ## Usage
 
 You will first need to get the sources to the crate you want to install.
-Your best bet is to search for the crate at [crates.io][https://crates.io]
+Your best bet is to search for the crate at [crates.io](https://crates.io)
 and follow the *Repository* link. This should give you the ability to clone
 the repo. Once you have cloned the repo, change into the directory and
 ensure that you checkout the tag corresponding to the version you would like

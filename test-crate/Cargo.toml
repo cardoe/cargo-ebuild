@@ -4,3 +4,17 @@ version = "0.1.0"
 authors = ["Doug Goldstein <cardoe@cardoe.com>"]
 
 [dependencies]
+
+[package.metadata.ebuild]
+maintainer = "cargo-ebuild devs <cargo-ebuild@not.a.real>"
+homepage = "http://github.com/cardoe/cargo-ebuild"
+description = "this is an example project"
+license = "MIT"
+restrict = "mirror"
+slot = "0"
+keywords = "amd64"
+iuse = "debug"
+inherit = "eutils"
+depend-is-rdepend = true
+rdepend = "dev-libs/openssl"
+pdepend = "dev-utils/rustfmt"

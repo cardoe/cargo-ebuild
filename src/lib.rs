@@ -11,6 +11,8 @@
 extern crate cargo;
 extern crate time;
 
+mod metadata;
+
 use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::{Package, PackageSet, Resolve, Workspace};
@@ -20,6 +22,8 @@ use cargo::{CliResult, Config};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
+
+use metadata::EbuildConfig;
 
 /// Finds the root Cargo.toml of the workspace
 fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
@@ -92,30 +96,7 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
     // sort the crates
     crates.sort();
 
-    // root package metadata
-    let metadata = package.manifest().metadata();
-
-    // package description
-    let desc = metadata
-        .description
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from(package.name()));
-
-    // package homepage
-    let homepage = metadata.homepage.as_ref().cloned().unwrap_or(
-        metadata
-            .repository
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| String::from("")),
-    );
-
-    let license = metadata
-        .license
-        .as_ref()
-        .cloned()
-        .unwrap_or_else(|| String::from("unknown license"));
+    let ebuild_data = EbuildConfig::from_package(package, crates);
 
     // build up the ebuild path
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
@@ -132,10 +113,10 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
     write!(
         file,
         include_str!("ebuild.template"),
-        description = desc.trim(),
-        homepage = homepage.trim(),
-        license = license.trim(),
-        crates = crates.join(""),
+        description = ebuild_data.description.trim(),
+        homepage = ebuild_data.homepage.trim(),
+        license = ebuild_data.license.trim(),
+        crates = ebuild_data.crates.join(""),
         cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
         this_year = 1900 + time::now().tm_year,
     ).chain_err(|| "unable to write ebuild to disk")?;

@@ -1,0 +1,6 @@
+[package]
+name = "test-crate"
+version = "0.1.0"
+authors = ["Doug Goldstein <cardoe@cardoe.com>"]
+
+[dependencies]

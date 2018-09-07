@@ -26,6 +26,6 @@ travis-ci = { repository = "cardoe/cargo-ebuild" }
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-cargo = "^0.21"
+cargo = "^0.29"
 structopt = "^0.2"
 time = "^0.1"

@@ -17,7 +17,7 @@ use cargo::core::registry::PackageRegistry;
 use cargo::core::resolver::Method;
 use cargo::core::{Package, PackageSet, Resolve, Workspace};
 use cargo::ops;
-use cargo::util::{important_paths, CargoResult, CargoResultExt};
+use cargo::util::{important_paths, CargoResult};
 use cargo::{CliResult, Config};
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -26,8 +26,8 @@ use std::path::PathBuf;
 use metadata::EbuildConfig;
 
 /// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config, manifest_path: Option<String>) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(manifest_path, config.cwd())?;
+fn workspace(config: &Config) -> CargoResult<Workspace> {
+    let root = important_paths::find_root_manifest_for_wd(config.cwd())?;
     Workspace::new(&root, config)
 }
 
@@ -40,8 +40,8 @@ fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageReg
 
 /// Resolve the packages necessary for the workspace
 fn resolve<'a>(
-    registry: &mut PackageRegistry,
-    workspace: &'a Workspace,
+    registry: &mut PackageRegistry<'a>,
+    workspace: &Workspace<'a>,
 ) -> CargoResult<(PackageSet<'a>, Resolve)> {
     // resolve our dependencies
     let (packages, resolve) = ops::resolve_ws(workspace)?;
@@ -58,6 +58,8 @@ fn resolve<'a>(
         None,
         /* specs */
         &[],
+        true,
+        true
     )?;
 
     Ok((packages, resolve))
@@ -65,7 +67,7 @@ fn resolve<'a>(
 
 pub fn run(verbose: u32, quiet: bool) -> CliResult {
     // create a default Cargo config
-    let config = Config::default()?;
+    let mut config = Config::default()?;
 
     config.configure(
         verbose,
@@ -76,10 +78,12 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
         false,
         /* locked */
         false,
+        &None,
+        &["minimal-versions".to_string()],
     )?;
 
     // Load the workspace and current package
-    let workspace = workspace(&config, None)?;
+    let workspace = workspace(&config)?;
     let package = workspace.current()?;
 
     // Resolve all dependencies (generate or use Cargo.lock as necessary)
@@ -107,7 +111,7 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
         .create(true)
         .truncate(true)
         .open(&ebuild_path)
-        .chain_err(|| "failed to create ebuild")?;
+        .expect("failed to create ebuild");
 
     // write the contents out
     write!(
@@ -119,7 +123,7 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
         crates = ebuild_data.crates.join(""),
         cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
         this_year = 1900 + time::now().tm_year,
-    ).chain_err(|| "unable to write ebuild to disk")?;
+    ).expect("unable to write ebuild to disk");
 
     println!("Wrote: {}", ebuild_path.display());
 

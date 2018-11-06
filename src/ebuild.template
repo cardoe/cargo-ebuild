@@ -17,7 +17,16 @@ RESTRICT="mirror"
 LICENSE="{license}" # Update to proper Gentoo format
 SLOT="0"
 KEYWORDS="~amd64"
-IUSE=""
+IUSE="{iuse}"
 
 DEPEND=""
 RDEPEND=""
+
+src_compile() {{
+	cargo build --no-default-features \
+		--features {cargo_features}\
+		-j $(makeopts_jobs)\
+		$(usex debug "" --release) \
+		--verbose \
+	|| die "Cargo build failed"
+}}

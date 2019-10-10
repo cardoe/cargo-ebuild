@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-ebuild"
-version = "0.2.0"
+version = "0.2.1-alpha.0"
 dependencies = [
  "cargo 0.37.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",

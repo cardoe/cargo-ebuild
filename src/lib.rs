@@ -59,7 +59,7 @@ fn resolve<'a>(
         /* specs */
         &[],
         /* warn */
-        true
+        true,
     )?;
 
     Ok((packages, resolve))
@@ -127,7 +127,8 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
         crates = ebuild_data.crates.join(""),
         cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
         this_year = 1900 + time::now().tm_year,
-    ).expect("unable to write ebuild to disk");
+    )
+    .expect("unable to write ebuild to disk");
 
     println!("Wrote: {}", ebuild_path.display());
 

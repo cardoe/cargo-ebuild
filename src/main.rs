@@ -28,11 +28,16 @@ struct Args {
     verbose: usize,
 }
 
+#[structopt(
+    name = "cargo-ebuild",
+    bin_name = "cargo",
+    author,
+    about = "Generates an ebuild for a given Cargo project",
+    global_settings(&[AppSettings::ColoredHelp])
+)]
 #[derive(StructOpt, Debug)]
-#[structopt(bin_name = "cargo")]
 enum Opt {
-    #[structopt(name = "ebuild",
-                raw(setting = "AppSettings::ColoredHelp"))]
+    #[structopt(name = "ebuild")]
     /// Generates an ebuild for a given Cargo project
     Ebuild(Args),
 }

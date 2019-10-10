@@ -27,5 +27,5 @@ maintenance = { status = "passively-maintained" }
 
 [dependencies]
 cargo = "^0.37"
-structopt = "^0.2"
+structopt = "^0.3"
 time = "^0.1"

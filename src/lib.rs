@@ -34,7 +34,7 @@ fn workspace(config: &Config) -> CargoResult<Workspace> {
 /// Generates a package registry by using the Cargo.lock or creating one as necessary
 fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
     let mut registry = PackageRegistry::new(config)?;
-    registry.add_sources(&[package.package_id().source_id().clone()])?;
+    registry.add_sources(vec![package.package_id().source_id()])?;
     Ok(registry)
 }
 
@@ -58,7 +58,7 @@ fn resolve<'a>(
         None,
         /* specs */
         &[],
-        true,
+        /* warn */
         true
     )?;
 
@@ -78,8 +78,12 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
         false,
         /* locked */
         false,
+        /* offline */
+        false,
+        /* target dir */
         &None,
-        &["minimal-versions".to_string()],
+        /* unstable flags */
+        &[],
     )?;
 
     // Load the workspace and current package

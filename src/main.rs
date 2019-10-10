@@ -10,7 +10,6 @@
 
 extern crate cargo;
 extern crate cargo_ebuild;
-#[macro_use]
 extern crate structopt;
 
 use cargo::util::CliError;

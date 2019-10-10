@@ -39,7 +39,7 @@ impl EbuildConfig {
             .unwrap_or_else(|| package.name().to_string());
 
         // package homepage
-        let homepage = metadata.homepage.as_ref().cloned().unwrap_or(
+        let homepage = metadata.homepage.as_ref().cloned().unwrap_or_else(||
             metadata
                 .repository
                 .as_ref()
@@ -55,9 +55,9 @@ impl EbuildConfig {
 
         EbuildConfig {
             inherit: None,
-            homepage: homepage,
+            homepage,
             description: desc,
-            license: license,
+            license,
             restrict: None,
             slot: None,
             keywords: None,
@@ -66,7 +66,7 @@ impl EbuildConfig {
             rdepend: None,
             pdepend: None,
             depend_is_rdepend: true,
-            crates: crates,
+            crates,
         }
     }
 }

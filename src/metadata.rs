@@ -36,7 +36,7 @@ impl EbuildConfig {
             .description
             .as_ref()
             .cloned()
-            .unwrap_or_else(|| String::from(package.name()));
+            .unwrap_or_else(|| package.name().to_string());
 
         // package homepage
         let homepage = metadata.homepage.as_ref().cloned().unwrap_or(

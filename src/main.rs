@@ -14,6 +14,7 @@ extern crate structopt;
 
 use cargo::util::CliError;
 use cargo_ebuild::run;
+use std::path::PathBuf;
 use std::process;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -26,6 +27,10 @@ struct Args {
     /// Verbose mode (-v, -vv, -vvv, etc.)
     #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
     verbose: usize,
+
+    #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
+    /// Path to Cargo.toml.
+    manifest_path: Option<PathBuf>,
 }
 
 #[structopt(
@@ -46,7 +51,7 @@ fn main() {
     let Opt::Ebuild(opt) = Opt::from_args();
 
     // run the actual code
-    if let Err(e) = run(opt.verbose as u32, opt.quiet) {
+    if let Err(e) = run(opt.verbose as u32, opt.quiet, opt.manifest_path) {
         // break apart the error
         let CliError {
             error,

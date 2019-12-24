@@ -13,59 +13,41 @@ extern crate time;
 
 mod metadata;
 
-use cargo::core::registry::PackageRegistry;
-use cargo::core::resolver::Method;
-use cargo::core::{Package, PackageSet, Resolve, Workspace};
-use cargo::ops;
+use cargo::core::Workspace;
 use cargo::util::{important_paths, CargoResult};
 use cargo::{CliResult, Config};
+use failure::format_err;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use metadata::EbuildConfig;
 
 /// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(config.cwd())?;
+fn workspace(config: &Config, manifest: impl AsRef<Path>) -> CargoResult<Workspace> {
+    let root = important_paths::find_root_manifest_for_wd(manifest.as_ref())?;
     Workspace::new(&root, config)
 }
 
-/// Generates a package registry by using the Cargo.lock or creating one as necessary
-fn registry<'a>(config: &'a Config, package: &Package) -> CargoResult<PackageRegistry<'a>> {
-    let mut registry = PackageRegistry::new(config)?;
-    registry.add_sources(vec![package.package_id().source_id()])?;
-    Ok(registry)
-}
+pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResult {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
 
-/// Resolve the packages necessary for the workspace
-fn resolve<'a>(
-    registry: &mut PackageRegistry<'a>,
-    workspace: &Workspace<'a>,
-) -> CargoResult<(PackageSet<'a>, Resolve)> {
-    // resolve our dependencies
-    let (packages, resolve) = ops::resolve_ws(workspace)?;
+    if let Some(path) = manifest_path {
+        cmd.manifest_path(path);
+    }
 
-    // resolve with all features set so we ensure we get all of the depends downloaded
-    let resolve = ops::resolve_with_previous(
-        registry,
-        workspace,
-        /* resolve it all */
-        Method::Everything,
-        /* previous */
-        Some(&resolve),
-        /* don't avoid any */
-        None,
-        /* specs */
-        &[],
-        /* warn */
-        true,
-    )?;
+    let metadata = cmd
+        .exec()
+        .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
 
-    Ok((packages, resolve))
-}
+    let mut crates = Vec::with_capacity(metadata.packages.len());
+    for pkg in metadata.packages {
+        crates.push(format!("{}-{}\n", pkg.name, pkg.version));
+    }
 
-pub fn run(verbose: u32, quiet: bool) -> CliResult {
+    // sort the crates
+    crates.sort();
+
     // create a default Cargo config
     let mut config = Config::default()?;
 
@@ -87,22 +69,8 @@ pub fn run(verbose: u32, quiet: bool) -> CliResult {
     )?;
 
     // Load the workspace and current package
-    let workspace = workspace(&config)?;
+    let workspace = workspace(&config, &metadata.workspace_root)?;
     let package = workspace.current()?;
-
-    // Resolve all dependencies (generate or use Cargo.lock as necessary)
-    let mut registry = registry(&config, &package)?;
-    let resolve = resolve(&mut registry, &workspace)?;
-
-    // build the crates the package needs
-    let mut crates = resolve
-        .1
-        .iter()
-        .map(|pkg| format!("{}-{}\n", pkg.name(), pkg.version()))
-        .collect::<Vec<String>>();
-
-    // sort the crates
-    crates.sort();
 
     let ebuild_data = EbuildConfig::from_package(package, crates);
 

@@ -9,6 +9,8 @@
  */
 
 use cargo::core::Package;
+use itertools::Itertools;
+use std::collections::BTreeSet;
 
 pub struct EbuildConfig {
     pub inherit: Option<String>,
@@ -27,7 +29,11 @@ pub struct EbuildConfig {
 }
 
 impl EbuildConfig {
-    pub fn from_package(package: &Package, crates: Vec<String>) -> Self {
+    pub fn from_package(
+        package: &Package,
+        crates: Vec<String>,
+        licenses: BTreeSet<String>,
+    ) -> Self {
         // root package metadata
         let metadata = package.manifest().metadata();
 
@@ -47,17 +53,11 @@ impl EbuildConfig {
                 .unwrap_or_else(|| String::from(""))
         });
 
-        let license = metadata
-            .license
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| String::from("unknown license"));
-
         EbuildConfig {
             inherit: None,
             homepage,
             description: desc,
-            license,
+            license: licenses.iter().format(" ").to_string(),
             restrict: None,
             slot: None,
             keywords: None,

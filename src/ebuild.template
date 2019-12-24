@@ -14,7 +14,9 @@ DESCRIPTION="{description}"
 HOMEPAGE="{homepage}"
 SRC_URI="$(cargo_crate_uris ${{CRATES}})"
 RESTRICT="mirror"
-LICENSE="{license}" # Update to proper Gentoo format
+# License set may be more restrictive as OR is not respected
+# use cargo-license for a more accurate license picture
+LICENSE="{license}"
 SLOT="0"
 KEYWORDS="~amd64"
 IUSE=""

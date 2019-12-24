@@ -17,6 +17,7 @@ use cargo::core::Workspace;
 use cargo::util::{important_paths, CargoResult};
 use cargo::{CliResult, Config};
 use failure::format_err;
+use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -27,6 +28,15 @@ use metadata::EbuildConfig;
 fn workspace(config: &Config, manifest: impl AsRef<Path>) -> CargoResult<Workspace> {
     let root = important_paths::find_root_manifest_for_wd(manifest.as_ref())?;
     Workspace::new(&root, config)
+}
+
+fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
+    lic_str
+        .split('/')
+        .flat_map(|l| l.split(" OR "))
+        .flat_map(|l| l.split(" AND "))
+        .map(str::trim)
+        .collect()
 }
 
 pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResult {
@@ -41,8 +51,18 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResu
         .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
 
     let mut crates = Vec::with_capacity(metadata.packages.len());
+    let mut licenses = BTreeSet::new();
     for pkg in metadata.packages {
         crates.push(format!("{}-{}\n", pkg.name, pkg.version));
+
+        if let Some(lic_list) = pkg.license.as_ref().map(|l| parse_license(&l)) {
+            for lic in lic_list.iter() {
+                licenses.insert(lic.to_string());
+            }
+        }
+        if pkg.license_file.is_some() {
+            println!("WARNING: {} uses a license-file, not handled", pkg.name);
+        }
     }
 
     // sort the crates
@@ -72,7 +92,7 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResu
     let workspace = workspace(&config, &metadata.workspace_root)?;
     let package = workspace.current()?;
 
-    let ebuild_data = EbuildConfig::from_package(package, crates);
+    let ebuild_data = EbuildConfig::from_package(package, crates, licenses);
 
     // build up the ebuild path
     let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));

@@ -50,9 +50,23 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResu
         .exec()
         .map_err(|e| format_err!("cargo metadata failed: {}", e))?;
 
+    let resolve = metadata
+        .resolve
+        .as_ref()
+        .ok_or_else(|| format_err!("cargo metadata did not resolve the depend graph"))?;
+    let root = resolve
+        .root
+        .as_ref()
+        .ok_or_else(|| format_err!("cargo metadata failed to resolve the root package"))?;
+
     let mut crates = Vec::with_capacity(metadata.packages.len());
     let mut licenses = BTreeSet::new();
+    let mut root_pkg = None;
     for pkg in metadata.packages {
+        if &pkg.id == root {
+            root_pkg = Some(pkg.clone());
+        }
+
         crates.push(format!("{}-{}\n", pkg.name, pkg.version));
 
         if let Some(lic_list) = pkg.license.as_ref().map(|l| parse_license(&l)) {
@@ -64,6 +78,9 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResu
             println!("WARNING: {} uses a license-file, not handled", pkg.name);
         }
     }
+
+    let root_pkg = root_pkg
+        .ok_or_else(|| format_err!("unable to determine package to generate ebuild for"))?;
 
     // sort the crates
     crates.sort();

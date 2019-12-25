@@ -8,14 +8,11 @@
  * except according to those terms.
  */
 
-extern crate cargo;
 extern crate cargo_ebuild;
 extern crate structopt;
 
-use cargo::util::CliError;
 use cargo_ebuild::run;
 use std::path::PathBuf;
-use std::process;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -52,17 +49,7 @@ fn main() {
 
     // run the actual code
     if let Err(e) = run(opt.verbose as u32, opt.quiet, opt.manifest_path) {
-        // break apart the error
-        let CliError {
-            error,
-            exit_code,
-            unknown: _unknown,
-        } = e;
-        // display a msg if we got one
-        if let Some(msg) = error {
-            eprintln!("{}", msg);
-        }
-        // exit appropriately
-        process::exit(exit_code);
+        eprintln!("{}", e);
+        ::std::process::exit(1);
     }
 }

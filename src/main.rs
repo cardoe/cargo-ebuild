@@ -11,6 +11,7 @@
 extern crate cargo_ebuild;
 extern crate structopt;
 
+use anyhow::Result;
 use cargo_ebuild::run;
 use std::path::PathBuf;
 use structopt::clap::AppSettings;
@@ -44,12 +45,9 @@ enum Opt {
     Ebuild(Args),
 }
 
-fn main() {
+fn main() -> Result<()> {
     let Opt::Ebuild(opt) = Opt::from_args();
 
     // run the actual code
-    if let Err(e) = run(opt.verbose as u32, opt.quiet, opt.manifest_path) {
-        eprintln!("{}", e);
-        ::std::process::exit(1);
-    }
+    run(opt.verbose as u32, opt.quiet, opt.manifest_path)
 }

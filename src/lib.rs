@@ -10,7 +10,7 @@
 
 mod metadata;
 
-use failure::format_err;
+use anyhow::{format_err, Result};
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -27,7 +27,7 @@ fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
         .collect()
 }
 
-pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> Result<(), failure::Error> {
+pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> Result<()> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
 
     if let Some(path) = manifest_path {

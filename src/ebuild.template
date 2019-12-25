@@ -11,6 +11,8 @@ CRATES="
 inherit cargo
 
 DESCRIPTION="{description}"
+# Double check the homepage as the cargo_metadata crate
+# does not provide this value so instead repository is used
 HOMEPAGE="{homepage}"
 SRC_URI="$(cargo_crate_uris ${{CRATES}})"
 RESTRICT="mirror"

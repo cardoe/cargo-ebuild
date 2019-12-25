@@ -8,7 +8,7 @@
  * except according to those terms.
  */
 
-use cargo::core::Package;
+use cargo_metadata::Package;
 use itertools::Itertools;
 use std::collections::BTreeSet;
 
@@ -29,28 +29,17 @@ pub struct EbuildConfig {
 }
 
 impl EbuildConfig {
-    pub fn from_package(
-        package: &Package,
-        crates: Vec<String>,
-        licenses: BTreeSet<String>,
-    ) -> Self {
-        // root package metadata
-        let metadata = package.manifest().metadata();
-
+    pub fn from_package(package: Package, crates: Vec<String>, licenses: BTreeSet<String>) -> Self {
         // package description
-        let desc = metadata
+        let desc = package
             .description
             .as_ref()
             .cloned()
-            .unwrap_or_else(|| package.name().to_string());
+            .unwrap_or_else(|| package.name.clone());
 
         // package homepage
-        let homepage = metadata.homepage.as_ref().cloned().unwrap_or_else(|| {
-            metadata
-                .repository
-                .as_ref()
-                .cloned()
-                .unwrap_or_else(|| String::from(""))
+        let homepage = package.repository.unwrap_or_else(|| {
+            String::from("homepage field in Cargo.toml inaccessible to cargo metadata")
         });
 
         EbuildConfig {

@@ -13,22 +13,13 @@ extern crate time;
 
 mod metadata;
 
-use cargo::core::Workspace;
-use cargo::util::{important_paths, CargoResult};
-use cargo::{CliResult, Config};
 use failure::format_err;
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use metadata::EbuildConfig;
-
-/// Finds the root Cargo.toml of the workspace
-fn workspace(config: &Config, manifest: impl AsRef<Path>) -> CargoResult<Workspace> {
-    let root = important_paths::find_root_manifest_for_wd(manifest.as_ref())?;
-    Workspace::new(&root, config)
-}
 
 fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
     lic_str
@@ -85,34 +76,12 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> CliResu
     // sort the crates
     crates.sort();
 
-    // create a default Cargo config
-    let mut config = Config::default()?;
+    let root_pkg_name_ver = format!("{}-{}", root_pkg.name, root_pkg.version);
 
-    config.configure(
-        verbose,
-        Some(quiet),
-        /* color */
-        &None,
-        /* frozen */
-        false,
-        /* locked */
-        false,
-        /* offline */
-        false,
-        /* target dir */
-        &None,
-        /* unstable flags */
-        &[],
-    )?;
-
-    // Load the workspace and current package
-    let workspace = workspace(&config, &metadata.workspace_root)?;
-    let package = workspace.current()?;
-
-    let ebuild_data = EbuildConfig::from_package(package, crates, licenses);
+    let ebuild_data = EbuildConfig::from_package(root_pkg, crates, licenses);
 
     // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}-{}.ebuild", package.name(), package.version()));
+    let ebuild_path = PathBuf::from(format!("{}.ebuild", root_pkg_name_ver));
 
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()

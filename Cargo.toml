@@ -29,8 +29,8 @@ is-it-maintained-open-issues = { repository = "cardoe/cargo-ebuild" }
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
+anyhow = "^1"
 cargo_metadata = "^0.9"
-failure = "^0.1"
 itertools = "^0.8"
 structopt = "^0.3"
 time = "^0.1"

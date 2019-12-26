@@ -19,13 +19,6 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 struct Args {
-    /// Silence all output
-    #[structopt(short = "q", long = "quiet")]
-    quiet: bool,
-    /// Verbose mode (-v, -vv, -vvv, etc.)
-    #[structopt(short = "v", long = "verbose", parse(from_occurrences))]
-    verbose: usize,
-
     #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
     /// Path to Cargo.toml.
     manifest_path: Option<PathBuf>,
@@ -49,7 +42,7 @@ fn main() -> Result<()> {
     let Opt::Ebuild(opt) = Opt::from_args();
 
     // compute the data from the package that the build needs
-    let ebuild_data = gen_ebuild_data(opt.verbose as u32, opt.quiet, opt.manifest_path)?;
+    let ebuild_data = gen_ebuild_data(opt.manifest_path)?;
 
     let ebuild_path = format!("{}-{}.ebuild", ebuild_data.name, ebuild_data.version);
 

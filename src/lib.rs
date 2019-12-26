@@ -10,11 +10,11 @@
 
 mod metadata;
 
-use anyhow::{format_err, Result};
+use anyhow::{format_err, Context, Result};
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use metadata::EbuildConfig;
 
@@ -27,7 +27,11 @@ fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
         .collect()
 }
 
-pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> Result<()> {
+pub fn gen_ebuild_data(
+    verbose: u32,
+    quiet: bool,
+    manifest_path: Option<PathBuf>,
+) -> Result<EbuildConfig> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
 
     if let Some(path) = manifest_path {
@@ -73,20 +77,20 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> Result<
     // sort the crates
     crates.sort();
 
-    let root_pkg_name_ver = format!("{}-{}", root_pkg.name, root_pkg.version);
+    Ok(EbuildConfig::from_package(root_pkg, crates, licenses))
+}
 
-    let ebuild_data = EbuildConfig::from_package(root_pkg, crates, licenses);
-
-    // build up the ebuild path
-    let ebuild_path = PathBuf::from(format!("{}.ebuild", root_pkg_name_ver));
-
+pub fn write_ebuild(ebuild_data: EbuildConfig, ebuild_path: impl AsRef<Path>) -> Result<()> {
     // Open the file where we'll write the ebuild
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(&ebuild_path)
-        .expect("failed to create ebuild");
+        .context(format!(
+            "Unable to create {}",
+            ebuild_path.as_ref().display()
+        ))?;
 
     // write the contents out
     write!(
@@ -99,9 +103,8 @@ pub fn run(verbose: u32, quiet: bool, manifest_path: Option<PathBuf>) -> Result<
         cargo_ebuild_ver = env!("CARGO_PKG_VERSION"),
         this_year = 1900 + time::now().tm_year,
     )
-    .expect("unable to write ebuild to disk");
-
-    println!("Wrote: {}", ebuild_path.display());
-
-    Ok(())
+    .context(format!(
+        "Failed to write to {}",
+        ebuild_path.as_ref().display()
+    ))
 }

@@ -12,7 +12,7 @@ extern crate cargo_ebuild;
 extern crate structopt;
 
 use anyhow::Result;
-use cargo_ebuild::run;
+use cargo_ebuild::{gen_ebuild_data, write_ebuild};
 use std::path::PathBuf;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
@@ -48,6 +48,14 @@ enum Opt {
 fn main() -> Result<()> {
     let Opt::Ebuild(opt) = Opt::from_args();
 
-    // run the actual code
-    run(opt.verbose as u32, opt.quiet, opt.manifest_path)
+    // compute the data from the package that the build needs
+    let ebuild_data = gen_ebuild_data(opt.verbose as u32, opt.quiet, opt.manifest_path)?;
+
+    let ebuild_path = format!("{}-{}.ebuild", ebuild_data.name, ebuild_data.version);
+
+    write_ebuild(ebuild_data, &ebuild_path)?;
+
+    println!("Wrote: {}", ebuild_path);
+
+    Ok(())
 }

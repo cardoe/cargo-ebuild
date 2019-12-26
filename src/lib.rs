@@ -27,11 +27,7 @@ fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
         .collect()
 }
 
-pub fn gen_ebuild_data(
-    verbose: u32,
-    quiet: bool,
-    manifest_path: Option<PathBuf>,
-) -> Result<EbuildConfig> {
+pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
 
     if let Some(path) = manifest_path {

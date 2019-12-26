@@ -13,6 +13,8 @@ use itertools::Itertools;
 use std::collections::BTreeSet;
 
 pub struct EbuildConfig {
+    pub name: String,
+    pub version: String,
     pub inherit: Option<String>,
     pub homepage: String,
     pub description: String,
@@ -43,6 +45,8 @@ impl EbuildConfig {
         });
 
         EbuildConfig {
+            name: package.name,
+            version: package.version.to_string(),
             inherit: None,
             homepage,
             description: desc,

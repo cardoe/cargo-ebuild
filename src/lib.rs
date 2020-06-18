@@ -55,7 +55,11 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
             root_pkg = Some(pkg.clone());
         }
 
-        crates.push(format!("{}-{}\n", pkg.name, pkg.version));
+        if let Some(src) = pkg.source {
+            if src.is_crates_io() {
+                crates.push(format!("{}-{}\n", pkg.name, pkg.version));
+            }
+        }
 
         if let Some(lic_list) = pkg.license.as_ref().map(|l| parse_license(&l)) {
             for lic in lic_list.iter() {

@@ -27,11 +27,18 @@ fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
         .collect()
 }
 
-pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
+pub fn gen_ebuild_data(
+    manifest_path: Option<PathBuf>,
+    filter_platform: Option<String>,
+) -> Result<EbuildConfig> {
     let mut cmd = cargo_metadata::MetadataCommand::new();
 
     if let Some(path) = manifest_path {
         cmd.manifest_path(path);
+    }
+
+    if let Some(platform) = filter_platform {
+        cmd.other_options(["--filter-platform".to_string(), platform]);
     }
 
     let metadata = cmd
@@ -42,6 +49,7 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
         .resolve
         .as_ref()
         .ok_or_else(|| format_err!("cargo metadata did not resolve the depend graph"))?;
+
     let root = resolve
         .root
         .as_ref()
@@ -50,6 +58,7 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
     let mut crates = Vec::with_capacity(metadata.packages.len());
     let mut licenses = BTreeSet::new();
     let mut root_pkg = None;
+
     for pkg in metadata.packages {
         if &pkg.id == root {
             root_pkg = Some(pkg.clone());

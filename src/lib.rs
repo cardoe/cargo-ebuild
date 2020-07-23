@@ -11,6 +11,8 @@
 mod metadata;
 
 use anyhow::{format_err, Context, Result};
+use cargo_lock::Lockfile;
+use cargo_metadata::MetadataCommand;
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -28,9 +30,9 @@ fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
 }
 
 pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
-    let mut cmd = cargo_metadata::MetadataCommand::new();
+    let mut cmd = MetadataCommand::new();
 
-    if let Some(path) = manifest_path {
+    if let Some(path) = manifest_path.as_ref() {
         cmd.manifest_path(path);
     }
 
@@ -42,23 +44,18 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
         .resolve
         .as_ref()
         .ok_or_else(|| format_err!("cargo metadata did not resolve the depend graph"))?;
+
     let root = resolve
         .root
         .as_ref()
         .ok_or_else(|| format_err!("cargo metadata failed to resolve the root package"))?;
 
-    let mut crates = Vec::with_capacity(metadata.packages.len());
     let mut licenses = BTreeSet::new();
     let mut root_pkg = None;
+
     for pkg in metadata.packages {
         if &pkg.id == root {
             root_pkg = Some(pkg.clone());
-        }
-
-        if let Some(src) = pkg.source {
-            if src.is_crates_io() {
-                crates.push(format!("{}-{}\n", pkg.name, pkg.version));
-            }
         }
 
         if let Some(lic_list) = pkg.license.as_ref().map(|l| parse_license(&l)) {
@@ -66,6 +63,7 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
                 licenses.insert(lic.to_string());
             }
         }
+
         if pkg.license_file.is_some() {
             println!("WARNING: {} uses a license-file, not handled", pkg.name);
         }
@@ -74,8 +72,17 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
     let root_pkg = root_pkg
         .ok_or_else(|| format_err!("unable to determine package to generate ebuild for"))?;
 
-    // sort the crates
-    crates.sort();
+    // Check for packages that must be fetched from default registry
+    let lockfile = Lockfile::load(metadata.workspace_root.join("Cargo.lock")).unwrap();
+    let mut crates = Vec::new();
+
+    for pkg in lockfile.packages {
+        if let Some(src) = pkg.source {
+            if src.is_default_registry() {
+                crates.push(format!("{}-{}\n", pkg.name, pkg.version));
+            }
+        }
+    }
 
     Ok(EbuildConfig::from_package(root_pkg, crates, licenses))
 }

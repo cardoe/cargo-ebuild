@@ -17,6 +17,7 @@ use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use metadata::EbuildConfig;
 
@@ -27,6 +28,29 @@ fn parse_license<'a>(lic_str: &'a str) -> Vec<&'a str> {
         .flat_map(|l| l.split(" AND "))
         .map(str::trim)
         .collect()
+}
+
+fn generate_lockfile(manifest_path: Option<PathBuf>) -> Result<()> {
+    let cargo = std::env::var("CARGO")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("cargo"));
+
+    let mut lock_cmd = Command::new(cargo);
+    lock_cmd.arg("generate-lockfile");
+
+    if let Some(path) = manifest_path.as_ref() {
+        lock_cmd.arg("--manifest-path");
+        lock_cmd.arg(path.as_os_str());
+    }
+
+    let lock_output = lock_cmd.output()?;
+
+    if !lock_output.status.success() {
+        let stderr = String::from_utf8_lossy(&lock_output.stderr);
+        return Err(format_err!("unable to generate lockfile:\n{}", stderr));
+    }
+
+    Ok(())
 }
 
 pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
@@ -51,6 +75,7 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
         .ok_or_else(|| format_err!("cargo metadata failed to resolve the root package"))?;
 
     let mut licenses = BTreeSet::new();
+    let mut crates = Vec::new();
     let mut root_pkg = None;
 
     for pkg in metadata.packages {
@@ -72,9 +97,15 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
     let root_pkg = root_pkg
         .ok_or_else(|| format_err!("unable to determine package to generate ebuild for"))?;
 
+    let lockfile_path = metadata.workspace_root.join("Cargo.lock");
+
+    // Generate lockfile if it doesn't exists
+    if std::fs::metadata(&lockfile_path).is_err() {
+        generate_lockfile(manifest_path)?;
+    }
+
     // Check for packages that must be fetched from default registry
-    let lockfile = Lockfile::load(metadata.workspace_root.join("Cargo.lock")).unwrap();
-    let mut crates = Vec::new();
+    let lockfile = Lockfile::load(lockfile_path)?;
 
     for pkg in lockfile.packages {
         if let Some(src) = pkg.source {

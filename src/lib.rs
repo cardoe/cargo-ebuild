@@ -110,7 +110,7 @@ pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
     for pkg in lockfile.packages {
         if let Some(src) = pkg.source {
             if src.is_default_registry() {
-                crates.push(format!("{}-{}\n", pkg.name, pkg.version));
+                crates.push(format!("\t{}-{}\n", pkg.name, pkg.version));
             }
         }
     }

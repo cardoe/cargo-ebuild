@@ -1,3 +1,6 @@
+# repository has moved to https://gitweb.gentoo.org/proj/cargo-ebuild.git
+# github pull requests and issues are accepted at https://github.com/gentoo/cargo-ebuild
+
 # cargo-ebuild
 
 [![Build Status](https://travis-ci.org/cardoe/cargo-ebuild.svg?branch=master)](https://travis-ci.org/cardoe/cargo-ebuild)

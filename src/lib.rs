@@ -13,6 +13,7 @@ mod metadata;
 use anyhow::{format_err, Context, Result};
 use cargo_lock::Lockfile;
 use cargo_metadata::MetadataCommand;
+use cargo_metadata::CargoOpt;
 use std::collections::BTreeSet;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -55,6 +56,8 @@ fn generate_lockfile(manifest_path: Option<PathBuf>) -> Result<()> {
 
 pub fn gen_ebuild_data(manifest_path: Option<PathBuf>) -> Result<EbuildConfig> {
     let mut cmd = MetadataCommand::new();
+
+    cmd.features(CargoOpt::AllFeatures);
 
     if let Some(path) = manifest_path.as_ref() {
         cmd.manifest_path(path);
